@@ -10,7 +10,7 @@ use radix_engine::{
 };
 use scrypto::prelude::*;
 use scrypto_unit::TestRunner;
-use transaction::builder::ManifestBuilder;
+use trangsaction::builder::ManifestBuilder;
 
 #[macro_export]
 macro_rules! nft_ids {
@@ -148,6 +148,19 @@ impl TestHelper {
             manifest_args!(key1, key2)
         );
         self.new_instruction("get_range", 1, 0);
+        self
+    }
+    pub fn get_range_mut(
+        &mut self,
+        key1: i32,
+        key2: i32
+    ) -> &mut TestHelper {
+        self.manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "get_range_mut",
+            manifest_args!(key1, key2)
+        );
+        self.new_instruction("get_range_mut", 1, 0);
         self
     }
 
