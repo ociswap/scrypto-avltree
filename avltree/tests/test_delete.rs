@@ -3,8 +3,8 @@ use radix_engine::system::kernel_modules::execution_trace::{ResourceSpecifier::A
 use scrypto::prelude::*;
 
 use helper_avl_tree::*;
-
-mod helper_avl_tree;
+mod test_utils;
+use crate::test_utils::test_range;
 
 #[test]
 fn test_delete_root() {

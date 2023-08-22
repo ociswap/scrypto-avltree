@@ -10,7 +10,7 @@ use radix_engine::{
 };
 use scrypto::prelude::*;
 use scrypto_unit::TestRunner;
-use trangsaction::builder::ManifestBuilder;
+use transaction::builder::ManifestBuilder;
 
 #[macro_export]
 macro_rules! nft_ids {
