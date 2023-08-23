@@ -394,10 +394,10 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
     pub fn delete(&mut self, key: i32) -> Option<T> {
         // Remove mut if store can remove nodes.
         let mut del_node = self.store.get_mut(&key)?;
-        let (start_tuple, shortened) = self.rewire_tree_for_delete(&del_node);
+        let (start_tuple, shortened) = self.rewire_tree_for_delete(del_node);
 
         self.balance_tree_after_delete(start_tuple, shortened);
-        self.store.remove(&del_node.key).map(|n| n.value)
+        self.store.remove(&key).map(|n| n.value)
     }
 
     fn balance_tree_after_delete(&mut self, mut node_tuple: Option<(KeyValueEntryRefMut<Node<T>>, Direction)>, mut shortened: bool) {
@@ -422,7 +422,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn rewire_tree_for_delete(&mut self, del_node: &KeyValueEntryRefMut<Node<T>>) -> (Option<(KeyValueEntryRefMut<Node<T>>, Direction)>, bool) {
+    fn rewire_tree_for_delete(&mut self, del_node: KeyValueEntryRefMut<Node<T>>) -> (Option<(KeyValueEntryRefMut<Node<T>>, Direction)>, bool) {
         let mut replace_parent = None;
         let mut direction = del_node.direction_from_parent();
         let mut shorten = true;
@@ -486,7 +486,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn rewire_possible_children_in_delete(&mut self, del_node: &KeyValueEntryRefMut<Node<T>>, replace: &KeyValueEntryRefMut<Node<T>>) -> Option<i32> {
+    fn rewire_possible_children_in_delete(&mut self, del_node: KeyValueEntryRefMut<Node<T>>, replace: &KeyValueEntryRefMut<Node<T>>) -> Option<i32> {
         let non_empty_child = replace.left.or(replace.right);
         // rewire possible child of replace if replace and del_node are not parent and child.
         if replace.parent != Some(del_node.key) {
