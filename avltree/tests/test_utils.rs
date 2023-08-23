@@ -1,9 +1,8 @@
 use pretty_assertions::assert_eq;
 use radix_engine::system::kernel_modules::execution_trace::{ResourceSpecifier::Amount, ResourceSpecifier::Ids};
 use scrypto::prelude::*;
-use helper_avl_tree::TestHelper;
+use crate::helper_avl_tree::TestHelper;
 
-mod helper_avl_tree;
 
 pub fn test_range(vector: Vec<i32>, to_delete: Vec<i32>) {
     let mut helper = TestHelper::new();
