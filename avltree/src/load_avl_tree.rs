@@ -11,11 +11,18 @@ mod avl_container {
     }
 
     impl AVLContainer {
-        pub fn instantiate() -> ComponentAddress {
+        pub fn instantiate() -> Global<AVLContainer> {
             let avl_tree = AvlTree::new();
-            let dummy_component = Self { avl_tree }.instantiate();
-            let dummy_component_address = dummy_component.globalize();
-            dummy_component_address
+            // let dummy_component = Self { avl_tree }.instantiate();
+            // let dummy_component_address = dummy_component.globalize();
+            // dummy_component_address
+            let component = Self {
+                avl_tree
+            }
+                .instantiate()
+                .prepare_to_globalize(OwnerRole::None)
+                .globalize();
+            component
         }
 
         pub fn insert(&mut self, key: i32, value: i32) {

@@ -117,13 +117,13 @@ impl Direction {
             Equal => None
         }
     }
-    fn get_next<T: ScryptoSbor>(&self, node: &DataRef<Node<T>>) -> Option<i32> {
+    fn get_next<T: ScryptoSbor>(&self, node: &KeyValueEntryRef<Node<T>>) -> Option<i32> {
         match self {
             Self::Left => node.prev,
             Self::Right => node.next,
         }
     }
-    fn get_next_mut<T: ScryptoSbor>(&self, node: &DataRefMut<Node<T>>) -> Option<i32> {
+    fn get_next_mut<T: ScryptoSbor>(&self, node: &KeyValueEntryRefMut<Node<T>>) -> Option<i32> {
         match self {
             Self::Left => node.prev,
             Self::Right => node.next,
@@ -141,7 +141,7 @@ pub struct NodeIterator<'a, T: ScryptoSbor> {
 
 
 impl<'a, T: ScryptoSbor> Iterator for NodeIterator<'a, T> {
-    type Item = DataRef<Node<T>>;
+    type Item = KeyValueEntryRef<'a, Node<T>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.store.get(&self.current?).expect("Node not found");
@@ -163,7 +163,7 @@ pub struct NodeIteratorMut<'a, T: ScryptoSbor> {
 }
 
 impl<'a, T: ScryptoSbor> Iterator for NodeIteratorMut<'a, T> {
-    type Item = DataRefMut<Node<T>>;
+    type Item = KeyValueEntryRefMut<'a, Node<T>>;
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.store.get_mut(&self.current?).expect("Node not found");
         if self.direction.is_over(node.key, self.end.expect("End is not set")) {
@@ -180,8 +180,6 @@ impl<'a, T: ScryptoSbor> Iterator for NodeIteratorMut<'a, T> {
 pub struct AvlTree<T: ScryptoSbor> {
     root: Option<i32>,
     store: KeyValueStore<i32, Node<T>>,
-    // can be removed if KVStore implements delete
-    removed: KeyValueStore<i32, bool>,
 }
 
 impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
@@ -189,11 +187,10 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         AvlTree {
             root: None,
             store: KeyValueStore::new(),
-            removed: KeyValueStore::new(),
         }
     }
 
-    fn get_node(&self, key: Option<i32>) -> DataRef<Node<T>> {
+    fn get_node(&self, key: Option<i32>) -> KeyValueEntryRef<Node<T>> {
         let data_ref = self.store.get(&key.expect("Call on empty tree"));
         match data_ref {
             None => panic!("Call on empty tree {}", key.unwrap()),
@@ -201,7 +198,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn get_mut_node(&mut self, key: i32) -> DataRefMut<Node<T>> {
+    fn get_mut_node(&mut self, key: i32) -> KeyValueEntryRefMut<Node<T>> {
         let data_ref = self.store.get_mut(&key);
         match data_ref {
             None => panic!("Call on empty tree {}", key),
@@ -212,10 +209,6 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
     pub fn get_range(&self, start_key: i32, end_key: i32) -> NodeIterator<T> {
         assert!(start_key <= end_key, "Start key should be smaller than end key");
         let mut start = None;
-        // Hack that it is not possible to get removed nodes
-        if self.removed.get(&start_key).is_none() {
-            start = self.store.get(&start_key);
-        }
         if start.is_none() {
             let start_key = self.find_first_right_node(start_key);
             start = start_key.map(|k| self.store.get(&k).expect("Node of subtree should exist."));
@@ -229,10 +222,6 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
     }
     pub fn get_range_mut(&mut self, start_key: i32, end_key: i32) -> NodeIteratorMut<T> {
         let mut start = None;
-        // Hack that it is not possible to get removed nodes
-        if self.removed.get(&start_key).is_none() {
-            start = self.store.get_mut(&start_key);
-        }
         if start.is_none() {
             let start_key = self.find_first_right_node(start_key);
             start = start_key.map(|k| self.store.get_mut(&k).expect("Node of subtree should exist."));
@@ -280,10 +269,10 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         let mut deepen = true;
         let mut node_tuple = parents.pop();
         let parent_indices = parents.into_iter().map(|(parent, dir)| (parent.key, dir.clone())).collect::<Vec<(i32, Direction)>>();
-        parents = parent_indices.into_iter().map(|(key, dir)| (self.get_mut_node(key), dir)).collect::<Vec<(DataRefMut<Node<T>>, Direction)>>();
+        parents = parent_indices.into_iter().map(|(key, dir)| (self.get_mut_node(key), dir)).collect::<Vec<(KeyValueEntryRefMut<Node<T>>, Direction)>>();
         while let Some((mut node, direction)) = node_tuple {
             let (mut parent, parent_direction) = parents.pop().unzip();
-            if deepen {
+            if true {
                 deepen = node.balance_factor == 0;
                 node.balance_factor += direction.direction_factor();
             }
@@ -295,7 +284,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn insert_node_in_empty_spot(&mut self, key: i32, value: T) -> (Vec<(DataRefMut<Node<T>>, Direction)>, DataRefMut<Node<T>>) {
+    fn insert_node_in_empty_spot(&mut self, key: i32, value: T) -> (Vec<(KeyValueEntryRefMut<Node<T>>, Direction)>, KeyValueEntryRefMut<Node<T>>) {
         let mut parents = match self.calculate_insert_parent_list(key) {
             Ok(parents) => parents,
             Err(mut same_node) => {
@@ -320,8 +309,8 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn calculate_insert_parent_list(&mut self, key: i32) -> Result<Vec<(DataRefMut<Node<T>>, Direction)>, DataRefMut<Node<T>>> {
-        let mut parents: Vec<(DataRefMut<Node<T>>, Direction)> = vec![];
+    fn calculate_insert_parent_list(&mut self, key: i32) -> Result<Vec<(KeyValueEntryRefMut<Node<T>>, Direction)>, KeyValueEntryRefMut<Node<T>>> {
+        let mut parents: Vec<(KeyValueEntryRefMut<Node<T>>, Direction)> = vec![];
         // For root and inserted node, it does not matter what direction we choose, we don't use it
         // parents.push((self.get_mut_node(self.root.unwrap()), Direction::from_ordering(key.cmp(&self.root.unwrap()))));
         let mut node = self.root;
@@ -361,7 +350,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         });
     }
 
-    fn insert_node_and_adjust_pointers(&mut self, mut last: &mut DataRefMut<Node<T>>, key: i32, value: T, dir: Direction, parents: &mut Vec<(DataRefMut<Node<T>>, Direction)>) {
+    fn insert_node_and_adjust_pointers(&mut self, mut last: &mut KeyValueEntryRefMut<Node<T>>, key: i32, value: T, dir: Direction, parents: &mut Vec<(KeyValueEntryRefMut<Node<T>>, Direction)>) {
         let parent_key = last.key;
         let other_neighbour: Option<i32>;
         // one neighbour is always the parent and the other is the next or prev of the parent, depending on the direction.
@@ -402,26 +391,16 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
 
 
     // delete functions
-    pub fn delete(&mut self, key: i32) -> Option<DataRefMut<Node<T>>> {
+    pub fn delete(&mut self, key: i32) -> Option<T> {
         // Remove mut if store can remove nodes.
         let mut del_node = self.store.get_mut(&key)?;
         let (start_tuple, shortened) = self.rewire_tree_for_delete(&del_node);
 
         self.balance_tree_after_delete(start_tuple, shortened);
-        self.removed.insert(del_node.key, true);
-        {
-            // Make del_node useless. This can be removed if KVStore supports deletion
-            del_node.left = None;
-            del_node.right = None;
-            del_node.parent = None;
-            del_node.balance_factor = i32::MIN;
-            del_node.prev = None;
-            del_node.next = None;
-        }
-        Some(del_node)
+        self.store.remove(&del_node.key).map(|n| n.value)
     }
 
-    fn balance_tree_after_delete(&mut self, mut node_tuple: Option<(DataRefMut<Node<T>>, Direction)>, mut shortened: bool) {
+    fn balance_tree_after_delete(&mut self, mut node_tuple: Option<(KeyValueEntryRefMut<Node<T>>, Direction)>, mut shortened: bool) {
         while let Some((mut current_node, child_dir)) = node_tuple {
             if shortened {
                 let mut parent = current_node.parent.map(|key| self.get_mut_node(key));
@@ -443,7 +422,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn rewire_tree_for_delete(&mut self, del_node: &DataRefMut<Node<T>>) -> (Option<(DataRefMut<Node<T>>, Direction)>, bool) {
+    fn rewire_tree_for_delete(&mut self, del_node: &KeyValueEntryRefMut<Node<T>>) -> (Option<(KeyValueEntryRefMut<Node<T>>, Direction)>, bool) {
         let mut replace_parent = None;
         let mut direction = del_node.direction_from_parent();
         let mut shorten = true;
@@ -478,7 +457,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         (replace_parent.or(parent).zip(direction), shorten)
     }
 
-    fn rewire_next_and_previous(&mut self, del_node: &DataRefMut<Node<T>>, mut parent: Option<&mut DataRefMut<Node<T>>>) {
+    fn rewire_next_and_previous(&mut self, del_node: &KeyValueEntryRefMut<Node<T>>, mut parent: Option<&mut KeyValueEntryRefMut<Node<T>>>) {
         // we have to use the parent if next or previous is it.
         if parent.as_ref().map(|p| p.key) == del_node.next {
             parent.as_mut().map(|next| next.prev = del_node.prev);
@@ -494,7 +473,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn rewire_replace_child(&mut self, direction: Direction, del_node: &DataRefMut<Node<T>>, replace_parent: &mut Option<DataRefMut<Node<T>>>, replace: &mut DataRefMut<Node<T>>) {
+    fn rewire_replace_child(&mut self, direction: Direction, del_node: &KeyValueEntryRefMut<Node<T>>, replace_parent: &mut Option<KeyValueEntryRefMut<Node<T>>>, replace: &mut KeyValueEntryRefMut<Node<T>>) {
         let del_child_node = del_node.get_child(direction);
         if del_child_node != Some(replace.key) {
             replace.set_child(direction, del_child_node);
@@ -507,7 +486,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn rewire_possible_children_in_delete(&mut self, del_node: &DataRefMut<Node<T>>, replace: &DataRefMut<Node<T>>) -> Option<i32> {
+    fn rewire_possible_children_in_delete(&mut self, del_node: &KeyValueEntryRefMut<Node<T>>, replace: &KeyValueEntryRefMut<Node<T>>) -> Option<i32> {
         let non_empty_child = replace.left.or(replace.right);
         // rewire possible child of replace if replace and del_node are not parent and child.
         if replace.parent != Some(del_node.key) {
@@ -518,7 +497,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         non_empty_child
     }
 
-    fn delete_rewire_parent(&mut self, replace: &mut DataRefMut<Node<T>>, replace_parent_key: i32, non_empty_child: Option<i32>, del_node: &DataRefMut<Node<T>>) -> (Option<DataRefMut<Node<T>>>, Option<Direction>) {
+    fn delete_rewire_parent(&mut self, replace: &mut KeyValueEntryRefMut<Node<T>>, replace_parent_key: i32, non_empty_child: Option<i32>, del_node: &KeyValueEntryRefMut<Node<T>>) -> (Option<KeyValueEntryRefMut<Node<T>>>, Option<Direction>) {
         let mut replace_parent = self.get_mut_node(replace_parent_key);
         replace_parent.remove_child(replace.key);
         let mut replace_parent = Some(replace_parent);
@@ -529,7 +508,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         (replace_parent, direction)
     }
 
-    fn get_replace_node(&mut self, node: &DataRefMut<Node<T>>) -> Option<DataRefMut<Node<T>>> {
+    fn get_replace_node(&mut self, node: &KeyValueEntryRefMut<Node<T>>) -> Option<KeyValueEntryRefMut<Node<T>>> {
         if node.has_child() {
             // Only needs replacement if node has a child.
             let imbalance_direction = node.get_imbalance_direction();
@@ -542,7 +521,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
     }
 
     // balance functions
-    fn balance(&mut self, root: &mut DataRefMut<Node<T>>, mut child: DataRefMut<Node<T>>, parent: Option<&mut DataRefMut<Node<T>>>, child_direction: Direction) -> i32 {
+    fn balance(&mut self, root: &mut KeyValueEntryRefMut<Node<T>>, mut child: KeyValueEntryRefMut<Node<T>>, parent: Option<&mut KeyValueEntryRefMut<Node<T>>>, child_direction: Direction) -> i32 {
         // let imbalance_direction = Direction::from_balance_factor(root.balance_factor).expect("Balance factor should be -2 or 2");
         // assert_eq!(child_direction, imbalance_direction, "Child direction {:?} should be the same as imbalance direction {:?}. Wrong child was given.", child_direction, imbalance_direction);
         // assert!(child.balance_factor.abs() <= 1, "Subtree {:?} of {} should not have a higher balance factor than 1", child.key, root.key);
@@ -555,7 +534,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    fn balance_with_subtree_in_same_direction(&mut self, root: &mut DataRefMut<Node<T>>, mut child: DataRefMut<Node<T>>, parent: Option<&mut DataRefMut<Node<T>>>, imbalance_direction: Direction) -> i32 {
+    fn balance_with_subtree_in_same_direction(&mut self, root: &mut KeyValueEntryRefMut<Node<T>>, mut child: KeyValueEntryRefMut<Node<T>>, parent: Option<&mut KeyValueEntryRefMut<Node<T>>>, imbalance_direction: Direction) -> i32 {
         /*
             *  Before Balance:
             *      R
@@ -578,7 +557,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         self.rotate(imbalance_direction.opposite(), root, &mut child, parent);
         child.balance_factor
     }
-    fn balance_with_zero_bf_subtree(&mut self, root: &mut DataRefMut<Node<T>>, mut child: DataRefMut<Node<T>>, parent: Option<&mut DataRefMut<Node<T>>>, imbalance_direction: Direction) -> i32 {
+    fn balance_with_zero_bf_subtree(&mut self, root: &mut KeyValueEntryRefMut<Node<T>>, mut child: KeyValueEntryRefMut<Node<T>>, parent: Option<&mut KeyValueEntryRefMut<Node<T>>>, imbalance_direction: Direction) -> i32 {
         /*
                 * imbalance direction = right
                 *  Before Balance :
@@ -606,7 +585,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         self.rotate(imbalance_direction.opposite(), root, &mut child, parent);
         child.balance_factor
     }
-    fn balance_with_subtree_in_different_direction(&mut self, root: &mut DataRefMut<Node<T>>, mut child: DataRefMut<Node<T>>, parent: Option<&mut DataRefMut<Node<T>>>, imbalance_direction: Direction) -> i32 {
+    fn balance_with_subtree_in_different_direction(&mut self, root: &mut KeyValueEntryRefMut<Node<T>>, mut child: KeyValueEntryRefMut<Node<T>>, parent: Option<&mut KeyValueEntryRefMut<Node<T>>>, imbalance_direction: Direction) -> i32 {
         /*
         * imbalance direction = right
         *  Before Balance :
@@ -642,13 +621,16 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
         // reset new_root balance factor here because the old value is needed before
         new_root.balance_factor = 0;
-        self.rotate(imbalance_direction, &mut child, &mut new_root, Some(root));
-        self.rotate(imbalance_direction.opposite(), root, &mut new_root, parent);
+        {
+            self.rotate(imbalance_direction, &mut child, &mut new_root, Some(root));
+        }{
+            self.rotate(imbalance_direction.opposite(), root, &mut new_root, parent);
+        }
         new_root.balance_factor
     }
 
 
-    fn rotate(&mut self, rotate_direction: Direction, root: &mut DataRefMut<Node<T>>, child: &mut DataRefMut<Node<T>>, parent: Option<&mut DataRefMut<Node<T>>>) {
+    fn rotate(&mut self, rotate_direction: Direction, root: &mut KeyValueEntryRefMut<Node<T>>, child: &mut KeyValueEntryRefMut<Node<T>>, parent: Option<&mut KeyValueEntryRefMut<Node<T>>>) {
         /*
             *  Rotate left:
             *      R
@@ -697,7 +679,7 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         root.parent = Some(child.key);
     }
 
-    fn rotate_rewire_parent(&self, parent: &mut DataRefMut<Node<T>>, root: &mut DataRefMut<Node<T>>, child: &mut DataRefMut<Node<T>>) -> i32 {
+    fn rotate_rewire_parent(&self, parent: &mut KeyValueEntryRefMut<Node<T>>, root: &mut KeyValueEntryRefMut<Node<T>>, child: &mut KeyValueEntryRefMut<Node<T>>) -> i32 {
         if parent.left == Some(root.key) {
             parent.left = Some(child.key);
         } else if parent.right == Some(root.key) {
@@ -710,7 +692,6 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
 
 
     // Debugging functions
-
     pub fn check_health(&self) {
         self.check_health_rec(self.root, true);
     }
