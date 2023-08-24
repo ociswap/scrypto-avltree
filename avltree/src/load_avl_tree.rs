@@ -25,31 +25,31 @@ mod avl_container {
             component
         }
 
-        pub fn insert(&mut self, key: i32, value: i32) {
-            self.avl_tree.insert(key, value);
-        }
-        pub fn check_health(&self)  {
-            self.avl_tree.check_health()
-        }
-        pub fn print(&self)  {
-            self.avl_tree.print_tree_nice()
-        }
-        pub fn get_range(&mut self, key1: i32, key2: i32) -> Vec<i32> {
-            let mut result = Vec::new();
-            for node in self.avl_tree.get_range(key1, key2){
-                result.push(node.value);
-            }
-            result
-        }
-        pub fn get_range_mut(&mut self, key1: i32, key2: i32) -> Vec<i32> {
-            let mut result = Vec::new();
-            for node in self.avl_tree.get_range_mut(key1, key2){
-                result.push(node.value);
-            }
-            result
-        }
-        pub fn delete(&mut self, key: i32) {
-            self.avl_tree.delete(key);
-        }
+        // pub fn insert(&mut self, key: i32, value: i32) {
+        //     self.avl_tree.insert(key, value);
+        // }
+        // pub fn check_health(&self)  {
+        //     self.avl_tree.check_health()
+        // }
+        // pub fn print(&self)  {
+        //     self.avl_tree.print_tree_nice()
+        // }
+        // pub fn get_range(&mut self, key1: i32, key2: i32) -> Vec<i32> {
+        //     let mut result = Vec::new();
+        //     for node in self.avl_tree.get_range(key1, key2){
+        //         result.push(node.value);
+        //     }
+        //     result
+        // }
+        // pub fn get_range_mut(&mut self, key1: i32, key2: i32) -> Vec<i32> {
+        //     let mut result = Vec::new();
+        //     for node in self.avl_tree.get_range_mut(key1, key2){
+        //         result.push(node.value);
+        //     }
+        //     result
+        // }
+        // pub fn delete(&mut self, key: i32) {
+        //     self.avl_tree.delete(key);
+        // }
     }
 }
