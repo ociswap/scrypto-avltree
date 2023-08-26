@@ -1,10 +1,7 @@
 use pretty_assertions::assert_eq;
-use radix_engine::system::kernel_modules::execution_trace::{ResourceSpecifier::Amount, ResourceSpecifier::Ids};
 use scrypto::prelude::*;
-
+mod helper_avl_tree;
 use helper_avl_tree::*;
-mod test_utils;
-use crate::test_utils::test_range;
 
 #[test]
 fn test_delete_root() {

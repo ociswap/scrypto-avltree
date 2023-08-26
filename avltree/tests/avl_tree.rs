@@ -1,5 +1,8 @@
-mod test_utils;
-use crate::test_utils::test_range;
+use pretty_assertions::assert_eq;
+use scrypto::prelude::*;
+mod helper_avl_tree;
+use helper_avl_tree::*;
+
 // Debug tests:
 #[test]
 fn test_increasing() {

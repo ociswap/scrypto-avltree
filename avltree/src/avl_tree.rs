@@ -200,14 +200,14 @@ impl<T: ScryptoSbor> AvlTree<T> where T: Clone {
         }
     }
 
-    // fn get_mut_node(&mut self, key: i32) -> KeyValueEntryRefMut<Node<T>> {
-    //     let data_ref = self.store.get_mut(&key);
-    //     match data_ref {
-    //         None => panic!("Call on empty tree {}", key),
-    //         Some(data) => data
-    //     }
-    // }
-    //
+    fn get_mut_node(&mut self, key: i32) -> KeyValueEntryRefMut<Node<T>> {
+        let data_ref = self.store.get_mut(&key);
+        match data_ref {
+            None => panic!("Call on empty tree {}", key),
+            Some(data) => data
+        }
+    }
+
     // pub fn get_range(&self, start_key: i32, end_key: i32) -> NodeIterator<T> {
     //     assert!(start_key <= end_key, "Start key should be smaller than end key");
     //     let mut start = None;

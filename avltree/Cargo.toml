@@ -4,14 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", branch = "main" }
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", branch = "main" }
+sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.11.0" }
+scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.11.0" }
 
 [dev-dependencies]
-transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", branch = "main" }
-radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", branch = "main" }
-scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", branch = "main" }
+transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.11.0" }
+radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.11.0" }
+scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.11.0" }
+scrypto_testenv = { git = "https://github.com/ociswap/scrypto-testenv", branch = "main", version = "0.2.0" }
 pretty_assertions = "1.3.0"
+lazy_static = "1.4.0"
 
 [profile.release]
 opt-level = 3          # 1, 2, 3 -> speed; 's', 'z' -> size ('z' yields smaller than 's')
