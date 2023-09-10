@@ -6,6 +6,7 @@ use crate::avl_tree_health::{check_health, print_tree_nice};
 
 #[blueprint]
 mod avl_container {
+    use std::ops::Bound::{Excluded, Included};
 
     struct AVLContainer {
         avl_tree: AvlTree<i32, i32>,
@@ -34,9 +35,32 @@ mod avl_container {
             self.avl_tree.get_mut(&key1).unwrap().value = 3;
             self.avl_tree.get_mut(&key1).unwrap().value
         }
+
+        pub fn get_range_back_both_included(&mut self, key1: i32, key2: i32) -> Vec<i32> {
+            let mut result = Vec::new();
+            for node in self.avl_tree.range_back((Included(key1), Included(key2))) {
+                result.push(node.value);
+            }
+            result
+        }
+        pub fn get_range_back_both_excluded(&mut self, key1: i32, key2: i32) -> Vec<i32> {
+            let mut result = Vec::new();
+            for node in self.avl_tree.range_back((Excluded(key1), Excluded(key2))) {
+                result.push(node.value);
+            }
+            result
+        }
+        pub fn get_range_back(&mut self, key1: i32, key2: i32) -> Vec<i32> {
+            let mut result = Vec::new();
+            for node in self.avl_tree.range_back((Included(key1), Excluded(key2))) {
+                result.push(node.value);
+            }
+            result
+        }
         pub fn get_range(&mut self, key1: i32, key2: i32) -> Vec<i32> {
             let mut result = Vec::new();
-            for node in self.avl_tree.range((Included(key1), Excluded(key2))) {
+            // Standard range is Included(start) and Excluded(end)
+            for node in self.avl_tree.range(key1 .. key2) {
                 result.push(node.value);
             }
             result

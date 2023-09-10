@@ -46,6 +46,38 @@ fn start_included_end_excluded(){
 }
 
 #[test]
+fn check_that_back_range_is_sorted(){
+    let mut helper = TestHelper::new();
+
+    helper.instantiate_default(true);
+    let vector = vec![13,24,43,23,12,23,13,42,53,54,21,11,12,14,16];
+    // let to_delete= vec![];
+    let mut helper = TestHelper::new();
+    // Print the shuffled vector
+    helper.instantiate_default(false);
+    for i in vector.iter() {
+        helper.insert(*i, *i);
+        helper.check_health();
+        helper.execute_expect_success(true);
+    }
+
+    let minimum = i32::MIN;
+    let maximum = i32::MAX;
+    helper.get_range_back(minimum, maximum);
+    let receipt = helper.execute_expect_success(true);
+    let output: Vec<Vec<i32>> = receipt.outputs("get_range_back");
+    let output = output[0].clone();
+    println!("vector: {:?}", vector);
+    println!("Output: {:?}", output);
+    let mut last= i32::MAX;
+    for i in output.iter() {
+        assert!(last > *i, "range_not_sorted last {}, i {},  {:?}", last, i, vector);
+        last = *i;
+        assert!(output.contains(&i), "i not contained in the tree {}", i);
+    }
+}
+
+#[test]
 fn check_that_range_is_sorted(){
     let mut helper = TestHelper::new();
 
@@ -78,6 +110,66 @@ fn check_that_range_is_sorted(){
 }
 
 #[test]
+fn check_that_range_back_only_contains_range(){
+    let mut helper = TestHelper::new();
+    helper.instantiate_default(true);
+    let vector: Vec<i32> = (10..30).collect();
+    let mut helper = TestHelper::new();
+    helper.instantiate_default(false);
+    for i in vector.iter() {
+        helper.insert(*i, *i);
+        helper.check_health();
+        helper.execute_expect_success(true);
+    }
+
+    let minimum = 15;
+    let maximum = 25;
+    helper.get_range_back_both_excluded(minimum, maximum);
+    let receipt = helper.execute_expect_success(true);
+    let output: Vec<Vec<i32>> = receipt.outputs("get_range_back_both_excluded");
+    let output = output[0].clone();
+    let mut last = i32::MAX;
+    println!("output: {:?}", output);
+    assert!(!output.contains(&15));
+    assert!(!output.contains(&25));
+    for i in output.clone().into_iter() {
+        assert!(last > i, "range_not_sorted {:?}", output.clone());
+        last = i;
+        assert!(vector.contains(&i), "i not contained in the tree {}", i);
+        assert!(i > 15, "All elements should be bigger 15");
+        assert!(i < 25, "All elements should be bigger 25");
+    }
+    helper.get_range_back_both_included(minimum, maximum);
+    let receipt = helper.execute_expect_success(true);
+    let output: Vec<Vec<i32>> = receipt.outputs("get_range_back_both_included");
+    let output = output[0].clone();
+    let mut last= i32::MAX;
+    assert!(output.contains(&15));
+    assert!(output.contains(&25));
+    for i in output.clone().into_iter() {
+        assert!(last > i, "range_not_sorted {:?}", output.clone());
+        last = i;
+        assert!(vector.contains(&i), "i not contained in the tree {}", i);
+        assert!(i >= 15, "All elements should be bigger 15");
+        assert!(i <= 25, "All elements should be bigger 25");
+    }
+    helper.get_range_back(minimum, maximum);
+    let receipt = helper.execute_expect_success(true);
+    let output: Vec<Vec<i32>> = receipt.outputs("get_range_back");
+    let output = output[0].clone();
+    let mut last= i32::MAX;
+    assert!(output.contains(&15));
+    assert!(!output.contains(&25));
+    for i in output.clone().into_iter() {
+        assert!(last > i, "range_not_sorted {:?}", vector.clone());
+        last = i;
+        assert!(vector.contains(&i), "i not contained in the tree {}", i);
+        assert!(i >= 15, "All elements should be bigger 15");
+        assert!(i < 25, "All elements should be bigger 25");
+    }
+}
+
+#[test]
 fn check_that_range_only_contains_range(){
     let mut helper = TestHelper::new();
     helper.instantiate_default(true);
@@ -102,7 +194,7 @@ fn check_that_range_only_contains_range(){
     println!("Output: {:?}", output);
     let mut last= i32::MIN;
     for i in output.clone().into_iter() {
-        assert!(last < i, "range_not_sorted {:?}", vector.clone());
+        assert!(last < i, "range_not_sorted {:?}", output.clone());
         last = i;
         assert!(vector.contains(&i), "i not contained in the tree {}", i);
         assert!(i >= 15, "All elements should be bigger 15");

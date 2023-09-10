@@ -3,9 +3,8 @@ use std::cmp::Ordering;
 
 use std::hash::Hash;
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::collections::VecDeque;
 use std::mem;
-use std::ops::{Bound, Range, RangeBounds};
+use std::ops::{Bound, RangeBounds};
 
 #[derive(ScryptoSbor, Clone)]
 pub struct Node<K: ScryptoSbor, V: ScryptoSbor> {
@@ -96,17 +95,17 @@ impl Direction {
             Self::Right => Self::Left,
         }
     }
-    fn is_over<K: Ord>(&self, value: &K, other: Bound<&K>) -> bool {
+    fn is_inside<K: Ord>(&self, value: &K, other: Bound<&K>) -> bool {
         match self {
             Self::Left => match other {
-                Bound::Unbounded => false,
-                Bound::Included(other) => value <= other,
-                Bound::Excluded(other) => value < other,
-            },
-            Self::Right => match other {
-                Bound::Unbounded => false,
+                Bound::Unbounded => true,
                 Bound::Included(other) => value >= other,
                 Bound::Excluded(other) => value > other,
+            },
+            Self::Right => match other {
+                Bound::Unbounded => true,
+                Bound::Included(other) => value <= other,
+                Bound::Excluded(other) => value < other,
             }
         }
     }
@@ -145,10 +144,7 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor> Iterator f
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.store.get(&self.current.clone()?).expect("Node not found");
-        if self
-            .direction
-            .is_over(&node.key, self.end.as_ref())
-        {
+        if !self.direction.is_inside(&node.key, self.end.as_ref()) {
             self.current = None;
             return None;
         }
@@ -248,45 +244,40 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
         self.store_cache.get_mut(key)
     }
 
-    pub fn range<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
-        let mut start = None;
-        if start.is_none() {
-            let start_key = self.find_first_right_node(range.start_bound());
-            start = start_key.map(|k| self.store.get(&k).expect("Node of subtree should exist."));
-        }
+    pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
+       return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
+    }
+    pub fn range<R>(&self, range: R)-> NodeIterator<K, V> where R: RangeBounds<K>{
+        return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
+    }
+    fn range_internal(&self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction:Direction) -> NodeIterator<K, V> {
+        let start = match start_bound {
+            Bound::Included(k) => self.get(k).map(|n| n.key.clone()),
+            Bound::Excluded(k) => self.get(k).map(|n|n.next(direction)).flatten(),
+            Bound::Unbounded => None,
+        };
+
+        let start = start.or_else(| | self.find_first_node(start_bound, direction));
         NodeIterator {
-            current: start.map(|n| n.key.clone()),
-            direction: Direction::Right,
-            end: range.end_bound().cloned(),
+            current: start,
+            direction,
+            end: end_bound.cloned(),
             store: &self.store,
         }
     }
 
-    fn find_first_right_node(&self, lower_bound: Bound<&K>) -> Option<K> {
+    fn find_first_node(&self, lower_bound: Bound<&K>, direction: Direction) -> Option<K> {
         let mut current = self.root.clone();
         let mut result = None;
         while current.is_some() {
             let node = self.store.get(&current.clone().unwrap()).expect("Node of subtree should exist.");
-            match lower_bound {
-                Bound::Unbounded => {
+            match direction.is_inside(&node.key, lower_bound) {
+                true => {
+                    current = node.get_child(direction).clone();
+                }
+                false => {
                     result = current.clone();
-                    current = node.left_child.clone();
-                }
-                Bound::Included(lower_bound) => {
-                    if &node.key < lower_bound {
-                        current = node.right_child.clone();
-                    } else {
-                        result = current.clone();
-                        current = node.left_child.clone();
-                    }
-                }
-                Bound::Excluded(lower_bound) => {
-                    if &node.key <= lower_bound {
-                        current = node.right_child.clone();
-                    } else {
-                        result = current.clone();
-                        current = node.left_child.clone();
-                    }
+                    current = node.get_child(direction.opposite()).clone();
                 }
             }
         }
@@ -551,11 +542,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
         del_node: &Node<K, ()>,
     ) {
         let direction = self.get_node(replace).expect("Node should exist").direction_to_parent().expect("Should have parent");
-        // {
         let replace_parent = self.get_mut_node(replace_parent_key).expect("Replace parent should exist");
         replace_parent.replace_child(replace, non_empty_child.clone());
         replace_parent.set_child(direction.opposite(), non_empty_child);
-        // }
         // replace should max have one child so we have to rewire the leftover child:
         self.get_mut_node(replace).expect("Replace should exist").balance_factor = del_node.balance_factor;
     }
@@ -568,7 +557,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
         let replace_key = imbalance_next.or_else(|| del_node.next.clone().map_or(del_node.prev.clone(), |n| Some(n)));
         replace_key
     }
-
     fn balance(&mut self, root: &K, balance_direction: Direction) -> i32 {
         let child_id = self.get_node(root).expect("Node should exist").get_child(balance_direction).expect("Child should exist");
         let child_balance_factor = self.get_node(&child_id).expect("Node should exist").balance_factor;
@@ -705,8 +693,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
            *      R
            *    /  \
            *   _    C
-           *      / \
-           *     RL  _
+           *       / \
+           *      RL  _
            *
            * to:
            *     C
