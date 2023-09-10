@@ -3,16 +3,16 @@ use std::collections::VecDeque;
 use crate::avl_tree::AvlTree;
 
 // Debugging functions
-pub fn check_health<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
+pub fn check_health<T: ScryptoSbor + Clone>(tree: &mut AvlTree<i32, T>) {
     check_health_rec(tree, tree.root, true);
 }
 
-fn check_health_rec<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>, key: Option<i32>, panic: bool) -> (i32, Option<i32>) {
+fn check_health_rec<T: ScryptoSbor + Clone>(tree: &mut AvlTree<i32, T>, key: Option<i32>, panic: bool) -> (i32, Option<i32>) {
     if key.is_none() {
         return (0, None);
     }
     let key = key.unwrap();
-    let node = tree.get(&key).expect("Node of subtree should exist.");
+    let node = tree.get_node(&key).expect("Node of subtree should exist.");
     let left = node.left_child;
     let right = node.right_child;
     let (height_left, parent_left) = check_health_rec(tree, left, panic);
@@ -53,7 +53,7 @@ fn check_health_rec<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>, key: Option<
     (height_left.max(height_right) + 1, node.parent)
 }
 
-pub fn print_tree_nice<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
+pub fn print_tree_nice<T: ScryptoSbor + Clone>(tree: &mut AvlTree<i32, T>) {
     // Works best if keys are between 10 and 99 because of formatting.
     let mut levels: HashMap<i32, HashMap<i32, i32>> = HashMap::new();
     let mut queue: VecDeque<(i32, i32, i32)> = VecDeque::new();
@@ -64,7 +64,7 @@ pub fn print_tree_nice<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
     queue.push_back((tree.root.unwrap(), 0, 0)); // root is at depth 0, position 0.
 
     while let Some((node_key, depth, pos)) = queue.pop_front() {
-        let node = tree.get(&node_key).expect("Node should exist.");
+        let node = tree.get_node(&node_key).expect("Node should exist.");
 
         if !levels.contains_key(&depth) {
             levels.insert(depth, HashMap::new());
@@ -98,7 +98,7 @@ pub fn print_tree_nice<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
 
         for pos in 0..=2.pow(depth as u32) as i32 - 1 {
             if let Some(node_key) = level.get(&pos) {
-                let node = tree.get(node_key).expect("Node should exist.");
+                let node = tree.get_node(node_key).expect("Node should exist.");
                 node_keys.push(format!("{}", node.key.to_string()));
                 let balance_factor = match node.balance_factor {
                     2 => "+2",

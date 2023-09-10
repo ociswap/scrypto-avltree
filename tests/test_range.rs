@@ -202,29 +202,29 @@ fn check_that_range_only_contains_range(){
     }
 }
 
-#[test]
-fn check_range_mutability(){
-    let mut helper = TestHelper::new();
-    helper.instantiate_default(true);
-    let vector: Vec<i32> = (10..30).collect();
-    // let to_delete= vec![];
-    let mut helper = TestHelper::new();
-    // Print the shuffled vector
-    helper.instantiate_default(false);
-    for i in vector.iter() {
-        helper.insert(*i, *i);
-        helper.check_health();
-        helper.execute_expect_success(true);
-    }
-    let minimum = 15;
-    let maximum = 25;
-    helper.update_values(minimum, maximum, -1);
-    helper.execute_expect_success(true);
-    helper.get_range(minimum, maximum);
-    let receipt = helper.execute_expect_success(true);
-    let output: Vec<Vec<i32>> = receipt.outputs("get_range");
-    let output = output[0].clone();
-    for i in output.into_iter() {
-        assert_eq!(i, -1);
-    }
-}
+// #[test]
+// fn check_range_mutability(){
+//     let mut helper = TestHelper::new();
+//     helper.instantiate_default(true);
+//     let vector: Vec<i32> = (10..30).collect();
+//     // let to_delete= vec![];
+//     let mut helper = TestHelper::new();
+//     // Print the shuffled vector
+//     helper.instantiate_default(false);
+//     for i in vector.iter() {
+//         helper.insert(*i, *i);
+//         helper.check_health();
+//         helper.execute_expect_success(true);
+//     }
+//     let minimum = 15;
+//     let maximum = 25;
+//     helper.update_values(minimum, maximum, -1);
+//     helper.execute_expect_success(true);
+//     helper.get_range(minimum, maximum);
+//     let receipt = helper.execute_expect_success(true);
+//     let output: Vec<Vec<i32>> = receipt.outputs("get_range");
+//     let output = output[0].clone();
+//     for i in output.into_iter() {
+//         assert_eq!(i, -1);
+//     }
+// }

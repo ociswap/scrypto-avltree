@@ -6,10 +6,14 @@ use std::cmp::Ordering::{Equal, Greater, Less};
 use std::mem;
 use std::ops::{Bound, RangeBounds};
 
-#[derive(ScryptoSbor, Clone)]
-pub struct Node<K: ScryptoSbor, V: ScryptoSbor> {
-    pub(crate) key: K,
+pub struct Element<V: ScryptoSbor> {
     pub value: V,
+}
+
+#[derive(ScryptoSbor, Clone)]
+pub(crate) struct Node<K: ScryptoSbor, V: ScryptoSbor> {
+    pub(crate) key: K,
+    pub(crate) value: V,
     pub(crate) left_child: Option<K>,
     pub(crate) right_child: Option<K>,
     pub(crate) parent: Option<K>,
@@ -18,7 +22,7 @@ pub struct Node<K: ScryptoSbor, V: ScryptoSbor> {
     pub(crate) balance_factor: i32,
 }
 
-impl<K: ScryptoSbor + Clone + Display + Eq + Ord, V: ScryptoSbor> Node<K, V> {
+impl<K: ScryptoSbor + Clone + Eq + Ord, V: ScryptoSbor> Node<K, V> {
     fn set_child(&mut self, direction: Direction, child: Option<K>) {
         match direction {
             Direction::Left => self.left_child = child,
@@ -31,10 +35,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord, V: ScryptoSbor> Node<K, V> {
         } else if self.right_child == Some(old_child.clone()) {
             self.right_child = new_child;
         } else {
-            panic!(
-                "Tried to over ride {} but was not a child of {}",
-                old_child.clone(), self.key.clone()
-            );
+            panic!("Tried to over ride Node but was not a child");
         }
     }
     fn get_child(&self, direction: Direction) -> Option<K> {
@@ -139,8 +140,8 @@ pub struct NodeIterator<'a, K: ScryptoSbor, V: ScryptoSbor, > {
     store: &'a KeyValueStore<K, Node<K, V>>,
 }
 
-impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor> Iterator for NodeIterator<'a, K, V> {
-    type Item = KeyValueEntryRef<'a, Node<K, V>>;
+impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> Iterator for NodeIterator<'a, K, V> {
+    type Item = Element<V>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.store.get(&self.current.clone()?).expect("Node not found");
@@ -149,30 +150,30 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor> Iterator f
             return None;
         }
         self.current = node.next(self.direction);
-        Some(node)
+        Some(Element { value: node.value.clone() })
     }
 }
 
-pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
-    current: Option<K>,
-    direction: Direction,
-    end: Bound<K>,
-    store: &'a mut KeyValueStore<K, Node<K, V>>,
-}
-
-
-impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor> NodeIteratorMut<'a, K, V> {
-    pub fn for_each(&mut self, mut f: impl FnMut(KeyValueEntryRefMut<Node<K, V>>)) {
-        while let Some(key) = self.current.clone() {
-            let node = self.store.get_mut(&key).expect("Node not found");
-            if !self.direction.is_inside(&node.key, self.end.as_ref()) {
-                self.current = None;
-            }
-            self.current = node.next(self.direction);
-            f(node);
-        }
-    }
-}
+// pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
+//     current: Option<K>,
+//     direction: Direction,
+//     end: Bound<K>,
+//     store: &'a mut KeyValueStore<K, Node<K, V>>,
+// }
+//
+//
+// impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor> NodeIteratorMut<'a, K, V> {
+//     pub fn for_each(&mut self, mut f: impl FnMut(KeyValueEntryRefMut<Node<K, V>>)) {
+//         while let Some(key) = self.current.clone() {
+//             let node = self.store.get_mut(&key).expect("Node not found");
+//             if !self.direction.is_inside(&node.key, self.end.as_ref()) {
+//                 self.current = None;
+//             }
+//             self.current = node.next(self.direction);
+//             f(node);
+//         }
+//     }
+// }
 #[derive(ScryptoSbor)]
 pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
     pub(crate) root: Option<K>,
@@ -180,7 +181,7 @@ pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
     store_cache: HashMap<K, Node<K, ()>>,
 }
 
-impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree<K, V>
+impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor + Clone> AvlTree<K, V>
 {
     pub fn new() -> Self {
         AvlTree {
@@ -190,17 +191,19 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<KeyValueEntryRef<Node<K, V>>> {
-        self.store.get(key)
+    pub fn get(&self, key: &K) -> Option<Element<V>> {
+        self.store.get(key).map(|node| Element {
+            value: node.value.clone(),
+        })
     }
 
-    pub fn get_mut(&mut self, key: &K) -> Option<KeyValueEntryRefMut<Node<K, V>>> {
-        self.store.get_mut(key)
-    }
+    // pub fn get_mut(&mut self, key: &K) -> Option<KeyValueEntryRefMut<Node<K, V>>> {
+    //     self.store.get_mut(key)
+    // }
 
-    fn get_node(&mut self, key: &K) -> Option<Node<K, ()>> {
+    pub(crate) fn get_node(&mut self, key: &K) -> Option<Node<K, ()>> {
         self.cache_if_missing(key);
-        // Carefull this is not synced with the store!
+        // Carefully this is not synced with the store!
         self.store_cache.get(&key).map(|x| x.clone())
     }
 
@@ -247,21 +250,22 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
     pub fn range<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
         return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
-    pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
-        return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
-    }
-    pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
-        return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
-    }
-    fn range_mut_internal(&mut self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIteratorMut<K, V> {
-        let start = self.range_get_start(start_bound, direction);
-        NodeIteratorMut {
-            current: start,
-            direction,
-            end: end_bound.cloned(),
-            store: &mut self.store,
-        }
-    }
+    // No valid solution
+    // pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
+    //     return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
+    // }
+    // pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
+    //     return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
+    // }
+    // fn range_mut_internal(&mut self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIteratorMut<K, V> {
+    //     let start = self.range_get_start(start_bound, direction);
+    //     NodeIteratorMut {
+    //         current: start,
+    //         direction,
+    //         end: end_bound.cloned(),
+    //         store: &mut self.store,
+    //     }
+    // }
     fn range_internal(&self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIterator<K, V> {
         let start = self.range_get_start(start_bound, direction);
         NodeIterator {
@@ -274,8 +278,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
 
     fn range_get_start(&self, start_bound: Bound<&K>, direction: Direction) -> Option<K> {
         let start = match start_bound {
-            Bound::Included(k) => self.get(k).map(|n| n.key.clone()),
-            Bound::Excluded(k) => self.get(k).map(|n| n.next(direction)).flatten(),
+            Bound::Included(k) => self.store.get(k).map(|n| n.key.clone()),
+            Bound::Excluded(k) => self.store.get(k).map(|n| n.next(direction)).flatten(),
             Bound::Unbounded => None,
         };
 
@@ -315,6 +319,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
                 cached_node.balance_factor += insert_direction.direction_factor();
             }
             if cached_node.balance_factor.abs() == 2 {
+                // shouldn't this break because we have the node cached and it gets change in balance?
                 self.balance(&node, insert_direction);
             }
             if !deepen {
