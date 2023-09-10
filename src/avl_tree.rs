@@ -153,29 +153,26 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor> Iterator f
     }
 }
 
-// pub struct NodeIteratorMut<'a, T: ScryptoSbor> {
-//     current: Option<i32>,
-//     direction: Direction,
-//     end: Option<i32>,
-//     store: &'a mut KeyValueStore<i32, Node<T>>,
-// }
-//
-// impl<'a, T: ScryptoSbor> Iterator for NodeIteratorMut<'a, T> {
-//     type Item = KeyValueEntryRefMut<'a, Node<T>>;
-//     fn next(self: &'_ mut NodeIteratorMut<'a, T>) -> Option<Self::Item> {
-//
-//         let k = 1;
-//         let node: KeyValueEntryRefMut<Node<T>> = self.store.get_mut(&k).expect("Node not found");
-//         if self.direction.is_over(node.key, self.end.expect("End is not set")) {
-//             self.current = None;
-//             self.end = None;
-//             return None;
-//         }
-//         self.current = self.direction.get_next_mut(&node);
-//         Some(node)
-//     }
-// }
+pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
+    current: Option<K>,
+    direction: Direction,
+    end: Bound<K>,
+    store: &'a mut KeyValueStore<K, Node<K, V>>,
+}
 
+
+impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor> NodeIteratorMut<'a, K, V> {
+    pub fn for_each(&mut self, mut f: impl FnMut(KeyValueEntryRefMut<Node<K, V>>)) {
+        while let Some(key) = self.current.clone() {
+            let node = self.store.get_mut(&key).expect("Node not found");
+            if !self.direction.is_inside(&node.key, self.end.as_ref()) {
+                self.current = None;
+            }
+            self.current = node.next(self.direction);
+            f(node);
+        }
+    }
+}
 #[derive(ScryptoSbor)]
 pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
     pub(crate) root: Option<K>,
@@ -245,25 +242,45 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor> AvlTree
     }
 
     pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
-       return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
+        return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
-    pub fn range<R>(&self, range: R)-> NodeIterator<K, V> where R: RangeBounds<K>{
+    pub fn range<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
         return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
-    fn range_internal(&self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction:Direction) -> NodeIterator<K, V> {
-        let start = match start_bound {
-            Bound::Included(k) => self.get(k).map(|n| n.key.clone()),
-            Bound::Excluded(k) => self.get(k).map(|n|n.next(direction)).flatten(),
-            Bound::Unbounded => None,
-        };
-
-        let start = start.or_else(| | self.find_first_node(start_bound, direction));
+    pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
+        return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
+    }
+    pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
+        return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
+    }
+    fn range_mut_internal(&mut self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIteratorMut<K, V> {
+        let start = self.range_get_start(start_bound, direction);
+        NodeIteratorMut {
+            current: start,
+            direction,
+            end: end_bound.cloned(),
+            store: &mut self.store,
+        }
+    }
+    fn range_internal(&self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIterator<K, V> {
+        let start = self.range_get_start(start_bound, direction);
         NodeIterator {
             current: start,
             direction,
             end: end_bound.cloned(),
             store: &self.store,
         }
+    }
+
+    fn range_get_start(&self, start_bound: Bound<&K>, direction: Direction) -> Option<K> {
+        let start = match start_bound {
+            Bound::Included(k) => self.get(k).map(|n| n.key.clone()),
+            Bound::Excluded(k) => self.get(k).map(|n| n.next(direction)).flatten(),
+            Bound::Unbounded => None,
+        };
+
+        let start = start.or_else(|| self.find_first_node(start_bound, direction));
+        start
     }
 
     fn find_first_node(&self, lower_bound: Bound<&K>, direction: Direction) -> Option<K> {
