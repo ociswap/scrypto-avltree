@@ -61,14 +61,13 @@ mod avl_container {
             }
             result
         }
-        // pub fn update_values(&mut self, start_key: i32, end_key: i32, new_value: i32) {
-        //     self.avl_tree.range_mut(start_key .. end_key).for_each(|mut node| {
-        //         node.value = new_value;
-        //         if node.key == 3 {
-        //             node.key = 5;
-        //         }
-        //     });
-        // }
+        pub fn update_values(&mut self, start_key: i32, end_key: i32, new_value: i32) {
+        debug!("{}",end_key);
+            self.avl_tree.range_mut(start_key .. end_key).for_each(|node| {
+                debug!("{}", node.value);
+                node.value = new_value;
+            });
+        }
         pub fn delete(&mut self, key: i32) {
             self.avl_tree.delete(key);
         }

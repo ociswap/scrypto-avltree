@@ -145,35 +145,38 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> It
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.store.get(&self.current.clone()?).expect("Node not found");
-        if !self.direction.is_inside(&node.key, self.end.as_ref()) {
-            self.current = None;
-            return None;
-        }
-        self.current = node.next(self.direction);
+        let next = node.next(self.direction);
+        self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())){
+            Some(true) => next,
+            _ => None,
+        };
         Some(Element { value: node.value.clone() })
     }
 }
 
-// pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
-//     current: Option<K>,
-//     direction: Direction,
-//     end: Bound<K>,
-//     store: &'a mut KeyValueStore<K, Node<K, V>>,
-// }
-//
-//
-// impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor> NodeIteratorMut<'a, K, V> {
-//     pub fn for_each(&mut self, mut f: impl FnMut(KeyValueEntryRefMut<Node<K, V>>)) {
-//         while let Some(key) = self.current.clone() {
-//             let node = self.store.get_mut(&key).expect("Node not found");
-//             if !self.direction.is_inside(&node.key, self.end.as_ref()) {
-//                 self.current = None;
-//             }
-//             self.current = node.next(self.direction);
-//             f(node);
-//         }
-//     }
-// }
+pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
+    current: Option<K>,
+    direction: Direction,
+    end: Bound<K>,
+    store: &'a mut KeyValueStore<K, Node<K, V>>,
+}
+
+
+impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor + Clone> NodeIteratorMut<'a, K, V> {
+    pub fn for_each(&mut self, mut function: impl FnMut(&mut Element<V>)) {
+        while let Some(key) = self.current.clone() {
+            let mut node = self.store.get_mut(&key).expect("Node not found");
+            let next = node.next(self.direction);
+            self.current = match next.as_ref().map(|k|  self.direction.is_inside(k, self.end.as_ref()))  {
+                Some(true) => next,
+                _ => None
+            };
+            let mut element = Element{value:node.value.clone()};
+            function(&mut element);
+            node.value = element.value
+        }
+    }
+}
 #[derive(ScryptoSbor)]
 pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
     pub(crate) root: Option<K>,
@@ -181,7 +184,7 @@ pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
     store_cache: HashMap<K, Node<K, ()>>,
 }
 
-impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor + Clone> AvlTree<K, V>
+impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor + Clone> AvlTree<K, V>
 {
     pub fn new() -> Self {
         AvlTree {
@@ -251,21 +254,23 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash, V: ScryptoSbor + Clone>
         return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
     // No valid solution
-    // pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
-    //     return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
-    // }
-    // pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
-    //     return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
-    // }
-    // fn range_mut_internal(&mut self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIteratorMut<K, V> {
-    //     let start = self.range_get_start(start_bound, direction);
-    //     NodeIteratorMut {
-    //         current: start,
-    //         direction,
-    //         end: end_bound.cloned(),
-    //         store: &mut self.store,
-    //     }
-    // }
+    pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
+        return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
+    }
+    pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> + Debug {
+        debug!("{:?}", range);
+        debug!("{:?}", range.end_bound());
+        return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
+    }
+    fn range_mut_internal(&mut self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIteratorMut<K, V> {
+        let start = self.range_get_start(start_bound, direction);
+        NodeIteratorMut {
+            current: start,
+            direction,
+            end: end_bound.cloned(),
+            store: &mut self.store,
+        }
+    }
     fn range_internal(&self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIterator<K, V> {
         let start = self.range_get_start(start_bound, direction);
         NodeIterator {
