@@ -227,7 +227,8 @@ pub fn test_range(vector: Vec<i32>, to_delete: Vec<i32>) {
             maximum = i;
         }
     }
-    helper.get_range(minimum, maximum);
+    // Maximum is exclusive.
+    helper.get_range(minimum, maximum + 1);
     let receipt = helper.execute_expect_success(true);
     let output: Vec<Vec<i32>> = receipt.outputs("get_range");
     let output = output[0].clone();
