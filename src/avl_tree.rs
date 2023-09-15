@@ -4,11 +4,36 @@ use std::cmp::Ordering;
 use std::hash::Hash;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::mem;
-use std::ops::{Bound, RangeBounds};
+use std::ops::{Bound, Deref, DerefMut, RangeBounds};
 
-pub struct Element<'a, K: ScryptoSbor, V: ScryptoSbor> {
-    pub value: V,
-    store_element: KeyValueEntryRefMut<'a, Node<K,V>>
+pub struct ItemRef<'a, K: ScryptoSbor, V: ScryptoSbor>{
+    item: KeyValueEntryRef<'a, Node<K, V>>
+}
+
+impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRef<'a, K, V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.item.value
+    }
+}
+
+pub struct ItemRefMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
+    item: KeyValueEntryRefMut<'a, Node<K, V>>
+}
+
+impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRefMut<'a, K, V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.item.value
+    }
+}
+
+impl <'a, K:ScryptoSbor, V: ScryptoSbor> DerefMut for  ItemRefMut<'a, K, V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.item.value
+    }
 }
 
 #[derive(ScryptoSbor, Clone)]
@@ -165,16 +190,19 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
 
 // This cannot be done without unsafe! we should not try it! If you want to try it yourself you need to add self.current in the struct (an optional KeyValueEntryRefMut<...>)
 // impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> Iterator for NodeIteratorMut<'a, K, V> {
-//     type Item = &'a mut V;
-//
-//     fn next(&'a mut self) -> Option<Self::Item> {
-//         self.current_value = self.store.get_mut(&self.current.clone()?);
-//         let next = self.current_value.as_ref().unwrap().next(self.direction);
+//     type Item = ItemMut<'a, K, V>;
+// 
+//     fn next(&mut self) -> Option<Self::Item> {
+//         let node = self.store.get_mut(&self.current.clone()?).unwrap();
+// 
+//         let next = node.next(self.direction);
 //         self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())){
 //             Some(true) => next,
 //             _ => None,
 //         };
-//         self.current_value.as_mut().map(move |n| &mut n.value)
+//         unsafe {
+//             Some(ItemMut{item:node})
+//         }
 //     }
 // }
 
@@ -193,6 +221,14 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor + Clone> NodeIterator
         }
     }
 }
+/// A `AvlTree` is a balanced binary tree.
+/// It is implemented as a double linked list with a binary tree on top.
+/// The double linked list is used to iterate over the tree in order.
+/// The binary tree is used to balance the tree.
+/// The tree is balanced by keeping track of the balance factor of each node.
+/// The balance factor is the height of the right subtree minus the height of the left subtree.
+/// If the balance factor is greater than 1 or smaller than -1 the tree is unbalanced.
+///
 #[derive(ScryptoSbor)]
 pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
     pub(crate) root: Option<K>,
@@ -203,6 +239,7 @@ pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
 impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor + Clone> AvlTree<K, V>
 {
     pub fn new() -> Self {
+        /// Creates a new empty `AvlTree`.
         AvlTree {
             root: None,
             store: KeyValueStore::new(),
@@ -210,14 +247,17 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<V> {
-        self.store.get(key).map(|node| node.value.clone() )
+    /// Returns the value of the given key.
+    pub fn get(&self, key: &K) -> Option<ItemRef<K,V>> {
+        self.store.get(key).map(|node| ItemRef {item: node} )
     }
 
-    pub fn get_mut(&mut self, key: &K) -> Option<Element<K, V>> {
-        self.store.get_mut(key).map(|n| Element{value: n.value.clone(), store_element: n})
+    /// Returns the value of the given key in a mutable wrapper, that writes back to the tree on drop.
+    pub fn get_mut(&mut self, key: &K) -> Option<ItemRefMut<K, V>> {
+        self.store.get_mut(key).map(|n| ItemRefMut {item: n})
     }
 
+    /// Return the internal representation of the tree, for debbuging and health checking.
     pub(crate) fn get_node(&mut self, key: &K) -> Option<Node<K, ()>> {
         self.cache_if_missing(key);
         // Carefully this is not synced with the store!
@@ -261,16 +301,68 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         self.store_cache.get_mut(key)
     }
 
+    /// Iterates backwards over the tree:
+    /// Example:
+    /// tree is initialized with all integers from 0 to 100.
+    /// for i in tree.range_back(10..20) {
+    ///   println!("{}", i);
+    /// }
+    /// gives:
+    /// 19, 18, 17, 16, 15, 14, 13, 12, 11, 10
+    /// The Include(start) and Exclude(end) can be changed
+    /// For example:
+    /// tree is initialized with all integers from 0 to 100.
+    /// for i in tree.range_back((Excluded(10),Included(20))) {
+    ///  println!("{}", i);
+    /// }
+    /// gives:
+    /// 20, 19, 18, 17, 16, 15, 14, 13, 12, 11
     pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
         return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
+    /// Iterate over the tree in order.
+    /// Range is normally defined as Included(start) and Excluded(end).
+    /// Example:
+    /// tree is initialized with all integers from 0 to 100 and value = key.
+    /// for i in tree.range(10..20) {
+    ///    println!("{}", i);
+    /// }
+    /// gives:
+    /// 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+    /// end can also be included either with Included(end) or:
+    /// tree is initialized with all integers from 0 to 100, and value=key.
+    /// for i in tree.range(10..=20) {
+    ///   println!("{}", i);
+    /// }
+    /// gives:
+    /// 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
     pub fn range<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
         return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
-    // No valid solution
+    /// Reversed mutable iterator that works only with for each:
+    /// Example:
+    /// tree is initialized with all integers from 0 to 100 and value = key.
+    /// let mut idx = 0
+    /// tree.range_back_mut(10..15).for_each(|x| {*x = idx; idx += 1;});
+    /// for i in tree.range(0..30) {
+    ///  println!("{}", i);
+    /// }
+    /// gives:
+    /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 3, 2, 1, 0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
     pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
         return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
+
+    /// Mutable iterator that works only with for each:
+    /// Example:
+    /// tree is initialized with all integers from 0 to 100 and value = key.
+    /// let mut idx = 0
+    /// tree.range_mut(10..20).for_each(|x| {*x = idx; idx += 1;} );
+    /// for i in tree.range(0..30) {
+    ///  println!("{}", i);
+    /// }
+    /// gives:
+    /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
     pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> + Debug {
         debug!("{:?}", range);
         debug!("{:?}", range.end_bound());
