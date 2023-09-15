@@ -6,8 +6,9 @@ use std::cmp::Ordering::{Equal, Greater, Less};
 use std::mem;
 use std::ops::{Bound, RangeBounds};
 
-pub struct Element<V: ScryptoSbor> {
+pub struct Element<'a, K: ScryptoSbor, V: ScryptoSbor> {
     pub value: V,
+    store_element: KeyValueEntryRefMut<'a, Node<K,V>>
 }
 
 #[derive(ScryptoSbor, Clone)]
@@ -141,7 +142,7 @@ pub struct NodeIterator<'a, K: ScryptoSbor, V: ScryptoSbor, > {
 }
 
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> Iterator for NodeIterator<'a, K, V> {
-    type Item = Element<V>;
+    type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.store.get(&self.current.clone()?).expect("Node not found");
@@ -150,9 +151,10 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> It
             Some(true) => next,
             _ => None,
         };
-        Some(Element { value: node.value.clone() })
+        Some(node.value.clone())
     }
 }
+
 
 pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
     current: Option<K>,
@@ -161,9 +163,23 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
     store: &'a mut KeyValueStore<K, Node<K, V>>,
 }
 
+// This cannot be done without unsafe! we should not try it! If you want to try it yourself you need to add self.current in the struct (an optional KeyValueEntryRefMut<...>)
+// impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> Iterator for NodeIteratorMut<'a, K, V> {
+//     type Item = &'a mut V;
+//
+//     fn next(&'a mut self) -> Option<Self::Item> {
+//         self.current_value = self.store.get_mut(&self.current.clone()?);
+//         let next = self.current_value.as_ref().unwrap().next(self.direction);
+//         self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())){
+//             Some(true) => next,
+//             _ => None,
+//         };
+//         self.current_value.as_mut().map(move |n| &mut n.value)
+//     }
+// }
 
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor + Clone> NodeIteratorMut<'a, K, V> {
-    pub fn for_each(&mut self, mut function: impl FnMut(&mut Element<V>)) {
+    pub fn for_each(&mut self, mut function: impl FnMut(&mut V)) {
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
@@ -171,9 +187,9 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor + Clone> NodeIterator
                 Some(true) => next,
                 _ => None
             };
-            let mut element = Element{value:node.value.clone()};
-            function(&mut element);
-            node.value = element.value
+            let mut value= node.value.clone();
+            function(&mut value);
+            node.value = value;
         }
     }
 }
@@ -194,15 +210,13 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<Element<V>> {
-        self.store.get(key).map(|node| Element {
-            value: node.value.clone(),
-        })
+    pub fn get(&self, key: &K) -> Option<V> {
+        self.store.get(key).map(|node| node.value.clone() )
     }
 
-    // pub fn get_mut(&mut self, key: &K) -> Option<KeyValueEntryRefMut<Node<K, V>>> {
-    //     self.store.get_mut(key)
-    // }
+    pub fn get_mut(&mut self, key: &K) -> Option<Element<K, V>> {
+        self.store.get_mut(key).map(|n| Element{value: n.value.clone(), store_element: n})
+    }
 
     pub(crate) fn get_node(&mut self, key: &K) -> Option<Node<K, ()>> {
         self.cache_if_missing(key);
