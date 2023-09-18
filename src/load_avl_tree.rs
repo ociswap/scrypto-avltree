@@ -56,36 +56,30 @@ mod avl_container {
         pub fn get_range(&mut self, key1: i32, key2: i32) -> Vec<i32> {
             let mut result = Vec::new();
             // Standard range is Included(start) and Excluded(end)
-            for node in self.avl_tree.range(key1..=key2) {
+            for node in self.avl_tree.range(key1..key2) {
                 result.push(node.clone());
             }
             result
         }
         pub fn update_values(&mut self, start_key: i32, end_key: i32, new_value: i32) {
-            let mut idx = 0;
             self.avl_tree.range_mut(start_key..end_key).for_each(|node| {
-                *node = idx;
-                idx += 1;
+                *node = new_value;
             });
-            // let mut test;
-            // {
-            //     for mut element in self.avl_tree.range_mut(start_key..end_key) {
-            //         test = element;
-            //     }
-            // }
+        }
+        pub fn update_values_back(&mut self, start_key: i32, end_key: i32, new_value: i32) {
+            self.avl_tree.range_back_mut(start_key..end_key).for_each(|node| {
+                *node = new_value;
+            });
         }
         pub fn update_value(&mut self, key: i32, new_value: i32) {
             let mut test = self.avl_tree.get_mut(&key).unwrap();
             *test = new_value;
         }
-        pub fn delete(&mut self, key: i32) {
-            {
-                let testa = self.avl_tree.get(&1).unwrap().clone();
-                let testb = self.avl_tree.get(&2).unwrap().clone();
-                let c = testa + testb;
-            }
-            self.avl_tree.delete(key);
-
+        pub fn get(&mut self, key: i32) -> Option<i32> {
+            self.avl_tree.get(&key).map(|x| *x)
+        }
+        pub fn delete(&mut self, key: i32) -> Option<i32>{
+            self.avl_tree.delete(key)
         }
     }
 }

@@ -1,5 +1,7 @@
-use scrypto::prelude::*;
 use std::collections::VecDeque;
+
+use scrypto::prelude::*;
+
 use crate::avl_tree::AvlTree;
 
 // Debugging functions

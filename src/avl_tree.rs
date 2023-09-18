@@ -1,13 +1,13 @@
-use scrypto::prelude::*;
 use std::cmp::Ordering;
-
-use std::hash::Hash;
 use std::cmp::Ordering::{Equal, Greater, Less};
+use std::hash::Hash;
 use std::mem;
 use std::ops::{Bound, Deref, DerefMut, RangeBounds};
 
-pub struct ItemRef<'a, K: ScryptoSbor, V: ScryptoSbor>{
-    item: KeyValueEntryRef<'a, Node<K, V>>
+use scrypto::prelude::*;
+
+pub struct ItemRef<'a, K: ScryptoSbor, V: ScryptoSbor> {
+    item: KeyValueEntryRef<'a, Node<K, V>>,
 }
 
 impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRef<'a, K, V> {
@@ -19,7 +19,7 @@ impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRef<'a, K, V> {
 }
 
 pub struct ItemRefMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
-    item: KeyValueEntryRefMut<'a, Node<K, V>>
+    item: KeyValueEntryRefMut<'a, Node<K, V>>,
 }
 
 impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRefMut<'a, K, V> {
@@ -30,7 +30,7 @@ impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRefMut<'a, K, V> {
     }
 }
 
-impl <'a, K:ScryptoSbor, V: ScryptoSbor> DerefMut for  ItemRefMut<'a, K, V> {
+impl<'a, K: ScryptoSbor, V: ScryptoSbor> DerefMut for ItemRefMut<'a, K, V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.item.value
     }
@@ -172,7 +172,7 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> It
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.store.get(&self.current.clone()?).expect("Node not found");
         let next = node.next(self.direction);
-        self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())){
+        self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())) {
             Some(true) => next,
             _ => None,
         };
@@ -211,16 +211,17 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor + Clone> NodeIterator
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
-            self.current = match next.as_ref().map(|k|  self.direction.is_inside(k, self.end.as_ref()))  {
+            self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())) {
                 Some(true) => next,
                 _ => None
             };
-            let mut value= node.value.clone();
+            let mut value = node.value.clone();
             function(&mut value);
             node.value = value;
         }
     }
 }
+
 /// A `AvlTree` is a balanced binary tree.
 /// It is implemented as a double linked list with a binary tree on top.
 /// The double linked list is used to iterate over the tree in order.
@@ -247,17 +248,31 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         }
     }
 
-    /// Returns the value of the given key.
-    pub fn get(&self, key: &K) -> Option<ItemRef<K,V>> {
-        self.store.get(key).map(|node| ItemRef {item: node} )
+    /// Returns the value of the given key in a ItemRef.
+    /// Usage:
+    /// let tree = AvlTree::new();
+    /// tree.insert(1, 1);
+    /// let value = tree.get(&1).unwrap();
+    /// assert_eq!(*value, 1);
+    pub fn get(&self, key: &K) -> Option<ItemRef<K, V>> {
+        self.store.get(key).map(|node| ItemRef { item: node })
     }
 
     /// Returns the value of the given key in a mutable wrapper, that writes back to the tree on drop.
+    /// Usage:
+    /// let tree = AvlTree::new();
+    /// tree.insert(1, 1);
+    /// {
+    ///     let mut value = tree.get_mut(&1).unwrap();
+    ///     *value = 2;
+    /// }
+    /// let value = tree.get(&1).unwrap();
+    /// assert_eq!(*value, 2);
     pub fn get_mut(&mut self, key: &K) -> Option<ItemRefMut<K, V>> {
-        self.store.get_mut(key).map(|n| ItemRefMut {item: n})
+        self.store.get_mut(key).map(|n| ItemRefMut { item: n })
     }
 
-    /// Return the internal representation of the tree, for debbuging and health checking.
+    /// Return the internal representation of the tree, for the health checking.
     pub(crate) fn get_node(&mut self, key: &K) -> Option<Node<K, ()>> {
         self.cache_if_missing(key);
         // Carefully this is not synced with the store!
@@ -362,6 +377,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     ///  println!("{}", i);
     /// }
     /// gives:
+    /// Because the range is sorted after the keys.
     /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
     pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> + Debug {
         debug!("{:?}", range);
@@ -416,6 +432,17 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         result
     }
 
+    /// Inserts a new key value pair into the tree.
+    /// Operation needs in the worst case 2*(log(n)+1) accesses to the KVStore.
+    /// If the key already exists the old value is returned and the new value is inserted.
+    /// Example:
+    /// let tree = AvlTree::new();
+    /// let old_value = tree.insert(1, 1);
+    /// assert_eq!(old_value, None);
+    /// let old_value = tree.insert(1, 2);
+    /// assert_eq!(old_value, Some(1));
+    /// let value = tree.get(&1).unwrap();
+    /// assert_eq!(*value, 2);
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         if let Some(mut existing_node) = self.store.get_mut(&key) {
             return Some(mem::replace(&mut existing_node.value, value));
@@ -544,15 +571,24 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         self.add_node(Some(parent_key.clone()), &key, value, prev, next);
     }
 
-    // delete functions
+    /// Deletes the given key from the tree.
+    /// Returns the value of the deleted key if it existed.
+    /// Usage:
+    /// let tree = AvlTree::new();
+    /// tree.insert(1, 1);
+    /// let value = tree.delete(1);
+    /// assert_eq!(value, Some(1));
+    /// let value = tree.delete(1);
+    /// assert_eq!(value, None);
+    /// let value = tree.get(&1);
+    /// assert_eq!(value, None);
     pub fn delete(&mut self, key: K) -> Option<V> {
         // Remove mut if store can remove nodes.
         let del_node = self.get_node(&key);
         if del_node.is_none() {
             return None;
         }
-        let del_node = del_node.unwrap();
-        let (start_tuple, shortened) = self.rewire_tree_for_delete(&del_node);
+        let (start_tuple, shortened) = self.rewire_tree_for_delete(del_node.unwrap());
         self.balance_tree_after_delete(start_tuple, shortened);
         self.flush_cache();
         self.store.remove(&key).map(|n| n.value)
@@ -584,10 +620,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             node_tuple = parent_before_balance.zip(balance_child_direction);
         }
     }
-    fn rewire_tree_for_delete(&mut self, del_node: &Node<K, ()>) -> (Option<(K, Direction)>, bool) {
+    fn rewire_tree_for_delete(&mut self, del_node: Node<K, ()>) -> (Option<(K, Direction)>, bool) {
         let del_node_parent_tuple = del_node.parent.clone().zip(del_node.direction_to_parent());
         self.rewire_next_and_previous(&del_node);
-        let replace_node = self.replace_node(&del_node);
+        let replace_node = self.calculate_replace_node(&del_node);
 
         del_node.parent.as_ref().map(|parent|
             self.get_mut_node(&parent).expect("Parent not in KVStore").replace_child(&del_node.key, replace_node.clone())

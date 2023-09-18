@@ -2,9 +2,9 @@ use pretty_assertions::assert_eq;
 use scrypto::prelude::*;
 use scrypto_testenv::TestHelperExecution;
 
-mod helper_avl_tree;
-
 use helper_avl_tree::*;
+
+mod helper_avl_tree;
 
 #[test]
 fn test_delete_root() {
@@ -24,6 +24,35 @@ fn test_delete_root() {
     let output = output[0].clone();
     println!("Output: {:?}", output);
     assert_eq!(output.len(), 0, "Something is still present in the tree");
+}
+#[test]
+fn test_get_before_and_after_delete(){
+    let mut helper = TestHelper::new();
+    helper.instantiate_default(false);
+    helper.insert(1, 400);
+    helper.check_health();
+    helper.get(1);
+    let recipt = helper.execute_expect_success(true);
+    let output: Vec<Option<i32>> = recipt.outputs("get");
+    let output = output[0].clone();
+    assert_eq!(output, Some(400), "Something is still present in the tree");
+    helper.delete(1);
+    helper.check_health();
+    helper.get(1);
+    let recipt = helper.execute_expect_success(true);
+    let delete_output: Vec<Option<i32>> = recipt.outputs("delete");
+    let delete_output = delete_output[0].clone();
+    let get_output: Vec<Option<i32>> = recipt.outputs("get");
+    let get_output = get_output[0].clone();
+    assert_eq!(delete_output, Some(400), "One was deleted from tree and returned");
+    assert_eq!(get_output, None, "One was deleted from tree");
+    helper.delete(1);
+    helper.check_health();
+    let recipt = helper.execute_expect_success(true);
+    let delete_output: Vec<Option<i32>> = recipt.outputs("delete");
+    let delete_output = delete_output[0].clone();
+    assert_eq!(delete_output, None, "Delete did not return None after deleting non existent element");
+
 }
 
 #[test]
@@ -70,7 +99,7 @@ fn three_insert_one_delete_3_insert() {
 
 #[test]
 fn shorten_was_calculated_wrong_because_balance_factor_of_delete_was_wrong() {
-    let vector: Vec<i32> = vec![5,3,7,1,4,8, 2];
+    let vector: Vec<i32> = vec![5, 3, 7, 1, 4, 8, 2];
     let to_delete = vec![5];
     test_range(vector, to_delete);
 }
@@ -84,29 +113,41 @@ fn delete_root_and_check_if_replace_parent_is_given_correct() {
 }
 
 #[test]
-fn replace_jumps_over_his_parent_with_rebalance() {
-    let vec = vec![6, 2, 8, 1, 3, 7, 4];
-    let to_delete = vec![2];
+fn replace_jumps_over_his_parent_with_rebalance_other_direction() {
+    let vec = vec![16, 12, 18, 11, 13, 17, 10];
+    let to_delete = vec![12];
     test_range(vec, to_delete);
 }
+
+#[test]
+fn replace_jumps_over_his_parent_with_rebalance() {
+    let vec = vec![16, 12, 18, 11, 13, 17, 10];
+    let to_delete = vec![12];
+    test_range(vec, to_delete);
+}
+
 #[test]
 fn replace_jumps_overhis_parent() {
     let vec = vec![6, 2, 7, 1, 3];
     let to_delete = vec![6];
     test_range(vec, to_delete);
 }
+
+
 #[test]
 fn delet_non_existent_and_dont_panic() {
     let vec = vec![6, 2];
     let to_delete = vec![8];
     test_range(vec, to_delete);
 }
+
 #[test]
 fn deletion_with_2_parents_above_but_only_one_balance() {
     let vector: Vec<i32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     let to_delete = vec![0, 1, 2, 3];
     test_range(vector, to_delete);
 }
+
 #[test]
 fn test_more_than_two_balances_in_delete() {
     let vector = vec![25, 20, 30, 10, 23, 26, 33, 31];
