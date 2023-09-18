@@ -188,21 +188,19 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
     store: &'a mut KeyValueStore<K, Node<K, V>>,
 }
 
-// This cannot be done without unsafe! we should not try it! If you want to try it yourself you need to add self.current in the struct (an optional KeyValueEntryRefMut<...>)
+// This cannot be done without unsafe! If you want to try it yourself you need to add self.current in the struct (an optional KeyValueEntryRefMut<...>)
 // impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> Iterator for NodeIteratorMut<'a, K, V> {
-//     type Item = ItemMut<'a, K, V>;
-// 
+//     type Item = ItemRefMut<'a, K, V>;
+//
 //     fn next(&mut self) -> Option<Self::Item> {
-//         let node = self.store.get_mut(&self.current.clone()?).unwrap();
-// 
+//         let node: KeyValueEntryRefMut<'a, Node<K,V>> = self.store.get_mut(&self.current.clone()?).unwrap();
+//
 //         let next = node.next(self.direction);
 //         self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())){
 //             Some(true) => next,
 //             _ => None,
 //         };
-//         unsafe {
-//             Some(ItemMut{item:node})
-//         }
+//         Some(ItemRefMut{item:node})
 //     }
 // }
 
@@ -239,7 +237,7 @@ pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
 
 impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor + Clone> AvlTree<K, V>
 {
-    /// Creates a new empty `AvlTree`.
+    /// Creates an empty `AvlTree`.
     pub fn new() -> Self {
         AvlTree {
             root: None,
@@ -279,6 +277,11 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         self.store_cache.get(&key).map(|x| x.clone())
     }
 
+    fn get_mut_node(&mut self, key: &K) -> Option<&mut Node<K, ()>> {
+        self.cache_if_missing(key);
+        self.store_cache.get_mut(key)
+    }
+
     fn cache_if_missing(&mut self, key: &K) {
         if !self.store_cache.contains_key(&key) {
             self.store.get(&key).map(|data| {
@@ -311,12 +314,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         }
         self.store_cache.clear();
     }
-    fn get_mut_node(&mut self, key: &K) -> Option<&mut Node<K, ()>> {
-        self.cache_if_missing(key);
-        self.store_cache.get_mut(key)
-    }
 
-    /// Iterates backwards over the tree:
+    /// Iterates backwards over the tree values:
     /// Example:
     /// tree is initialized with all integers from 0 to 100.
     /// for i in tree.range_back(10..20) {
@@ -335,7 +334,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
         return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
-    /// Iterate over the tree in order.
+    /// Iterate over the tree values in order of the keys.
     /// Range is normally defined as Included(start) and Excluded(end).
     /// Example:
     /// tree is initialized with all integers from 0 to 100 and value = key.
@@ -354,7 +353,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     pub fn range<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
         return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
-    /// Reversed mutable iterator that works only with for each:
+    /// Reversed mutable iterator over the values that works only with for each:
     /// Example:
     /// tree is initialized with all integers from 0 to 100 and value = key.
     /// let mut idx = 0
@@ -368,7 +367,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
 
-    /// Mutable iterator that works only with for each:
+    /// Mutable iterator over the values that works only with for each:
     /// Example:
     /// tree is initialized with all integers from 0 to 100 and value = key.
     /// let mut idx = 0
@@ -378,7 +377,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// }
     /// gives:
     /// Because the range is sorted after the keys.
-    /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
+    /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
     pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> + Debug {
         return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
