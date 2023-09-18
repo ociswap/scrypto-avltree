@@ -6,7 +6,6 @@ use crate::avl_tree_health::{check_health, print_tree_nice};
 
 #[blueprint]
 mod avl_container {
-    use std::ops::Bound::{Excluded, Included};
 
     struct AVLContainer {
         avl_tree: AvlTree<i32, i32>,

@@ -239,8 +239,8 @@ pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
 
 impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor + Clone> AvlTree<K, V>
 {
+    /// Creates a new empty `AvlTree`.
     pub fn new() -> Self {
-        /// Creates a new empty `AvlTree`.
         AvlTree {
             root: None,
             store: KeyValueStore::new(),
@@ -448,16 +448,17 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         let mut parent = self.insert_node_in_empty_spot(&key, value);
         let mut deepen = true;
         while let Some((node, insert_direction)) = parent {
-            let mut cached_node = self.get_mut_node(&node).expect("Parent of insert should exist");
+            let cached_node = self.get_mut_node(&node).expect("Parent of insert should exist");
             parent = cached_node.parent.clone().zip(cached_node.direction_from_parent());
             if deepen {
                 deepen = cached_node.balance_factor == 0;
                 cached_node.balance_factor += insert_direction.direction_factor();
             }
             if cached_node.balance_factor.abs() == 2 {
-                // shouldn't this break because we have the node cached and it gets change in balance?
+                // This compiles even with cached_node being borrowed mutably, because rust understands that cached node is not used anymore.
                 self.balance(&node, insert_direction);
             }
+            // let a = cached_node.balance_factor;
             if !deepen {
                 break;
             }
@@ -603,7 +604,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             }
             let parent_before_balance = self.get_node(&current_node).expect("Node should exist because key was saved earlier").parent;
             let (current_node_balance_factor, balance_child_direction) = {
-                let mut current_node = self.get_mut_node(&current_node).expect("Node should exist because key was saved earlier");
+                let current_node = self.get_mut_node(&current_node).expect("Node should exist because key was saved earlier");
                 current_node.balance_factor += child_dir.direction_factor();
                 // get balance direction before balancing because the parent can change afterwards.
                 (current_node.balance_factor, current_node.direction_to_parent())
@@ -758,7 +759,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
          * A  A A  A
          */
         self.get_mut_node(child).expect("Child in balance should exist").balance_factor = 0;
-
         self.get_mut_node(root).expect("Balance root should exist").balance_factor = 0;
         self.rotate(imbalance_direction.opposite(), root, child);
         // Balance_factor of new root=child=0
@@ -827,29 +827,23 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
          */
         // This reference is not synced with the parents list. However, this child node should be further down in the tree and not in the parents list
         let new_root = self.get_node(child).expect("Child of balance should exist").get_child(imbalance_direction.opposite()).unwrap();
-        let new_root_balance_factor = self.get_node(&new_root).expect("New root should also exist else we would not be in this case!").balance_factor;
-        {
-            let root = self.get_mut_node(root).expect("Root in balance should exist");
-            root.balance_factor = 0;
-            // If new root was balanced in the same direction, root has a child more
-            if new_root_balance_factor == imbalance_direction.direction_factor() {
-                root.balance_factor = imbalance_direction.opposite().direction_factor();
-            }
-        }
-        {
-            let child = self.get_mut_node(child).expect("Child in balance should exist");
-            child.balance_factor = 0;
-            // If new root was balanced in the same direction, child has a child more
-            if new_root_balance_factor == imbalance_direction.opposite().direction_factor() {
-                child.balance_factor = imbalance_direction.direction_factor();
-            }
-        }
+        let new_root_balance_factor= {
+            let new_root_node = self.get_mut_node(&new_root).expect("New root should also exist else we would not be in this case!");
+            mem::replace(&mut new_root_node.balance_factor, 0)
+        };
+
+        self.change_bf_based_on_imbalance_direction(root, imbalance_direction, new_root_balance_factor);
+        self.change_bf_based_on_imbalance_direction(child, imbalance_direction.opposite(), new_root_balance_factor);
         self.rotate(imbalance_direction, child, &new_root);
         self.rotate(imbalance_direction.opposite(), root, &new_root);
-        // reset new_root balance factor here because the old value is needed before
-        self.get_mut_node(&new_root).expect("New root should still exist").balance_factor = 0;
-        // balance_factor_of_new_root
         0
+    }
+    fn change_bf_based_on_imbalance_direction(&mut self, node_id: &K, direction:Direction, new_root_balance_factor: i32){
+        let root = self.get_mut_node(node_id).expect("Root in balance should exist");
+        root.balance_factor = match new_root_balance_factor == direction.direction_factor(){
+            false => 0,
+            true => direction.opposite().direction_factor(),
+        };
     }
 
     fn rotate(&mut self, rotate_direction: Direction, root: &K, child: &K) {
