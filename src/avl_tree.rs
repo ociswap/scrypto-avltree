@@ -380,8 +380,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// Because the range is sorted after the keys.
     /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
     pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> + Debug {
-        debug!("{:?}", range);
-        debug!("{:?}", range.end_bound());
         return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
     fn range_mut_internal(&mut self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIteratorMut<K, V> {
@@ -645,65 +643,63 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         replace: &K,
         del_node: &Node<K, ()>,
     ) -> ((K, Direction), bool) {
-        let mut replace_parent_key;
-        let mut replace_parent_direction;
-        let non_empty_child;
-        {
-            let replace = self.get_node(replace).expect("Node should exist.");
-            non_empty_child = self.rewire_possible_children_in_delete(&del_node.key, &replace);
-            replace_parent_key = replace.parent.clone().expect("should have parent because it is a child of current");
-            replace_parent_direction = replace.direction_to_parent().unwrap();
-        }
+        let (mut replace_parent_key, mut replace_parent_direction, non_empty_child) = self.replace_parent_and_children(replace, &del_node);
         let shorten;
         if del_node.key == replace_parent_key {
             // if parent is node to delete, we do not have to rewrite stuff because node will be lost anyway.
             // change balance factor of replace because will not be in the parent chain.
-            let mut replace = self.get_mut_node(replace).expect("Replace should exist");
+            let replace = self.get_mut_node(replace).expect("Replace should exist");
             let replace_balance_factor = del_node.balance_factor.clone() + replace.direction_from_other(del_node.key.clone()).expect("Should have different keys").direction_factor();
             replace.balance_factor = replace_balance_factor;
             shorten = replace_balance_factor == 0;
-            // This should be uncommented or we have to jump over del node if del node is the parent? -> write a test (replace jumps over his parents, that does not require a rebalance...)!
             del_node.parent.clone().map(|parent| {
                 replace_parent_key = parent;
                 replace_parent_direction = del_node.direction_to_parent().unwrap();
             });
-            // panic!("This should not happen because we jump over the del node in next and previous.");
         } else {
-            self.delete_rewire_parent(replace, &replace_parent_key, non_empty_child, del_node);
+            self.delete_rewire_replace_parent(replace, &replace_parent_key, non_empty_child, del_node);
             shorten = true;
         }
-        self.rewire_replace_child(Direction::Left, del_node, replace);
-        self.rewire_replace_child(Direction::Right, del_node, replace);
+        self.rewire_replace_child(del_node, replace);
 
         self.get_mut_node(replace).expect("Replace should exist").parent = del_node.parent.clone();
         ((replace_parent_key, replace_parent_direction), shorten)
+    }
+
+    fn replace_parent_and_children(&mut self, replace: &K, del_node: &Node<K, ()>) -> (K, Direction, Option<K>) {
+        let replace = self.get_node(replace).expect("Node should exist.");
+        let non_empty_child = replace.left_child.clone().or(replace.right_child.clone());
+        // rewire possible child of replace if replace and del_node are not parent and child.
+        if replace.parent.as_ref() != Some(&del_node.key) {
+            non_empty_child.as_ref().map(|k| self.get_mut_node(k).expect("Replace child not in store but present in replace as child").parent = replace.parent.clone());
+        }
+        let replace_parent_key = replace.parent.clone().expect("should have parent because it is a child of the del_node.");
+        (replace_parent_key, replace.direction_to_parent().unwrap(), non_empty_child)
     }
     fn rewire_next_and_previous(&mut self, del_node: &Node<K, ()>) {
         // Jump over del_node in next and previous.
         del_node.next.as_ref().map(|next| self.get_mut_node(next).expect("Next is not in store").prev = del_node.prev.clone());
         del_node.prev.as_ref().map(|prev| self.get_mut_node(prev).expect("Del node prev is not in store").next = del_node.next.clone());
     }
-    fn rewire_replace_child(&mut self, direction: Direction, del_node: &Node<K, ()>, replace: &K) {
-        let del_child_node = del_node.get_child(direction);
-        if del_child_node.as_ref() == Some(replace) {
+    fn rewire_replace_child(&mut self, del_node: &Node<K, ()>, replace: &K) {
+        let children: Vec<(K, Direction)> = [Direction::Left, Direction::Right].into_iter()
+            .map(|d| del_node.get_child(d).zip(Some(d)))
+            .filter(|k| k.is_some()).map(|k| k.unwrap())
+            .filter(|(k, _)| k != replace).collect();
+        if children.len() == 0 {
             return;
         }
-        self.get_mut_node(replace).expect("Replace should exist").set_child(direction, del_child_node.clone());
-        del_child_node.as_ref().map(|k| self.get_mut_node(k).expect("Child of delete not in store but in tree").parent = Some(replace.clone()));
-    }
-    fn rewire_possible_children_in_delete(
-        &mut self,
-        del_node_key: &K,
-        replace: &Node<K, ()>,
-    ) -> Option<K> {
-        let non_empty_child = replace.left_child.clone().or(replace.right_child.clone());
-        // rewire possible child of replace if replace and del_node are not parent and child.
-        if replace.parent.as_ref() != Some(del_node_key) {
-            non_empty_child.as_ref().map(|k| self.get_mut_node(k).expect("Replace child not in store but present in replace as child").parent = replace.parent.clone());
+        children.iter().for_each(|(child, _)| {
+            self.get_mut_node(child).expect("Child of delete not in store but in tree").parent = Some(replace.clone());
+        });
+        {
+            let replace_node = self.get_mut_node(replace).expect("Replace should exist");
+            children.into_iter().for_each(|(child, direction)| {
+                replace_node.set_child(direction, Some(child));
+            });
         }
-        non_empty_child
     }
-    fn delete_rewire_parent(
+    fn delete_rewire_replace_parent(
         &mut self,
         replace: &K,
         replace_parent_key: &K,
@@ -717,7 +713,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         // replace should max have one child so we have to rewire the leftover child:
         self.get_mut_node(replace).expect("Replace should exist").balance_factor = del_node.balance_factor;
     }
-    fn replace_node(&mut self, del_node: &Node<K, ()>) -> Option<K> {
+    fn calculate_replace_node(&mut self, del_node: &Node<K, ()>) -> Option<K> {
         if !del_node.has_child() {
             return None;
         }
