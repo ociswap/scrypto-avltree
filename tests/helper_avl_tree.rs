@@ -194,7 +194,7 @@ pub fn test_range(vector: Vec<i32>, to_delete: Vec<i32>) {
     for i in vector.iter() {
         println!("inserting {:?}", i);
         helper.insert(*i, *i);
-        helper.print();
+        // helper.print();
         helper.check_health();
         helper.execute_expect_success(true);
     }
@@ -218,8 +218,8 @@ pub fn test_range(vector: Vec<i32>, to_delete: Vec<i32>) {
     }
     for i in to_delete.iter().rev() {
         helper.delete(*i);
-        helper.print();
-        println!("Deleting {}", i);
+        // helper.print();
+        // println!("Deleting {}", i);
         helper.check_health();
         helper.execute_expect_success(true);
     }

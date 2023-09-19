@@ -44,6 +44,8 @@ fn start_included_end_excluded() {
         assert_eq!(output[i], expected[i]);
     }
     assert!(!output.contains(&5));
+    println!("output {:?}", output);
+    println!("expected {:?}", expected);
     assert_eq!(output.len(), expected.len());
 }
 

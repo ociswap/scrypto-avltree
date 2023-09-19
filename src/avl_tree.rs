@@ -48,7 +48,7 @@ pub(crate) struct Node<K: ScryptoSbor, V: ScryptoSbor> {
     pub(crate) balance_factor: i32,
 }
 
-impl<K: ScryptoSbor + Clone + Eq + Ord, V: ScryptoSbor> Node<K, V> {
+impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K, V> {
     fn set_child(&mut self, direction: Direction, child: Option<K>) {
         match direction {
             Direction::Left => self.left_child = child,
@@ -68,6 +68,15 @@ impl<K: ScryptoSbor + Clone + Eq + Ord, V: ScryptoSbor> Node<K, V> {
         match direction {
             Direction::Left => self.left_child.clone(),
             Direction::Right => self.right_child.clone(),
+        }
+    }
+
+    fn get_child_in_key_direction(&self, other_key: &K) -> Option<Option<&K>>{
+        debug!("{}, {}", self.key, other_key);
+        match self.key.cmp(other_key){
+            Greater => Some(self.left_child.as_ref()),
+            Equal => None,
+            Less => Some(self.right_child.as_ref()),
         }
     }
     fn has_child(&self) -> bool {
@@ -166,7 +175,7 @@ pub struct NodeIterator<'a, K: ScryptoSbor, V: ScryptoSbor, > {
     store: &'a KeyValueStore<K, Node<K, V>>,
 }
 
-impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> Iterator for NodeIterator<'a, K, V> {
+impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + Clone> Iterator for NodeIterator<'a, K, V> {
     type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -204,7 +213,7 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
 //     }
 // }
 
-impl<'a, K: ScryptoSbor + Clone + Ord + Eq, V: ScryptoSbor + Clone> NodeIteratorMut<'a, K, V> {
+impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display +Debug, V: ScryptoSbor + Clone> NodeIteratorMut<'a, K, V> {
     pub fn for_each(&mut self, mut function: impl FnMut(&mut V)) {
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
@@ -471,33 +480,33 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 
     fn insert_node_in_empty_spot(&mut self, key: &K, value: V) -> Option<(K, Direction)> {
-        let mut node = self.root.clone().map(|x| self.get_node(&x).expect("Root should exist"));
-        let mut parent_tuple = None;
-        while let Some(current_node) = node {
-            // get last element of parents
-            let down_direction = Direction::from_ordering(key.cmp(&current_node.key));
-            match down_direction {
-                Some(down_direction) => {
-                    parent_tuple = Some((current_node.key.clone(), down_direction));
-                    node = current_node.get_child(down_direction).map(|n| self.get_node(&n).expect("Child should exist, because direction exists"));
+        let mut current = self.root.clone();
+        let mut parent = None;
+        while let Some(parent_key) = current.as_ref() {
+            let current_node =  self.get_node(parent_key).expect("Root should exist");
+            match current_node.get_child_in_key_direction(key) {
+                Some(child) => {
+                    parent = current;
+                    current = child.cloned();
                 }
                 None => {
-                    // Key already exists do not balance parents just override value
                     panic!("Key already exists this should be caught in the beginning of insert");
                 }
             }
         }
-        match parent_tuple.as_ref() {
-            Some((last, dir)) => {
-                self.insert_node_and_adjust_pointers(last, key, value, *dir);
+        match parent {
+            Some(parent_key) => {
+                let dir = Direction::from_ordering(key.cmp(&parent_key)).expect("Parent has to be different");
+                self.insert_node_and_adjust_pointers(&parent_key, key, value, dir);
+                Some((parent_key, dir))
             }
             None => {
                 // Tree is empty
                 self.add_node(None, &key, value, None, None);
                 self.root = Some(key.clone());
+                None
             }
-        };
-        parent_tuple
+        }
     }
 
     fn add_node(
@@ -585,7 +594,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// let value = tree.get(&1);
     /// assert_eq!(value, None);
     pub fn delete(&mut self, key: &K) -> Option<V> {
-        // Remove mut if store can remove nodes.
         if !self.key_present(key){
             return None;
         }
