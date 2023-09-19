@@ -78,7 +78,7 @@ mod avl_container_decimal {
             self.avl_tree.get(&key).map(|x| x.clone())
         }
         pub fn delete(&mut self, key: Decimal) -> Option<Decimal>{
-            self.avl_tree.delete(key)
+            self.avl_tree.delete(&key)
         }
     }
 }

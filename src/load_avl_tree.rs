@@ -78,7 +78,7 @@ mod avl_container {
             self.avl_tree.get(&key).map(|x| *x)
         }
         pub fn delete(&mut self, key: i32) -> Option<i32>{
-            self.avl_tree.delete(key)
+            self.avl_tree.delete(&key)
         }
     }
 }

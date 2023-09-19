@@ -271,10 +271,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 
     /// Return the internal representation of the tree, for the health checking.
-    pub(crate) fn get_node(&mut self, key: &K) -> Option<Node<K, ()>> {
+    pub(crate) fn get_node(&mut self, key: &K) -> Option<&Node<K, ()>> {
         self.cache_if_missing(key);
         // Carefully this is not synced with the store!
-        self.store_cache.get(&key).map(|x| x.clone())
+        self.store_cache.get(&key)
     }
 
     fn get_mut_node(&mut self, key: &K) -> Option<&mut Node<K, ()>> {
@@ -300,6 +300,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 )
             });
         }
+    }
+    fn key_present(&mut self, key: &K) -> bool{
+        self.cache_if_missing(key);
+        self.store_cache.contains_key(key)
     }
 
     fn flush_cache(&mut self) {
@@ -580,13 +584,12 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// assert_eq!(value, None);
     /// let value = tree.get(&1);
     /// assert_eq!(value, None);
-    pub fn delete(&mut self, key: K) -> Option<V> {
+    pub fn delete(&mut self, key: &K) -> Option<V> {
         // Remove mut if store can remove nodes.
-        let del_node = self.get_node(&key);
-        if del_node.is_none() {
+        if !self.key_present(key){
             return None;
         }
-        let (start_tuple, shortened) = self.rewire_tree_for_delete(del_node.unwrap());
+        let (start_tuple, shortened) = self.rewire_tree_for_delete(key);
         self.balance_tree_after_delete(start_tuple, shortened);
         self.flush_cache();
         self.store.remove(&key).map(|n| n.value)
@@ -601,7 +604,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             if !shortened {
                 break;
             }
-            let parent_before_balance = self.get_node(&current_node).expect("Node should exist because key was saved earlier").parent;
+            let parent_before_balance = self.get_node(&current_node).cloned().expect("Node should exist because key was saved earlier").parent;
             let (current_node_balance_factor, balance_child_direction) = {
                 let current_node = self.get_mut_node(&current_node).expect("Node should exist because key was saved earlier");
                 current_node.balance_factor += child_dir.direction_factor();
@@ -618,7 +621,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             node_tuple = parent_before_balance.zip(balance_child_direction);
         }
     }
-    fn rewire_tree_for_delete(&mut self, del_node: Node<K, ()>) -> (Option<(K, Direction)>, bool) {
+    fn rewire_tree_for_delete(&mut self, del_node_key: &K) -> (Option<(K, Direction)>, bool) {
+        let del_node = self.get_node(del_node_key).expect("Node should be present, because this gets checked in the beginning of delete.");
+        let del_node = del_node.clone();
         let del_node_parent_tuple = del_node.parent.clone().zip(del_node.direction_to_parent());
         self.rewire_next_and_previous(&del_node);
         let replace_node = self.calculate_replace_node(&del_node);
@@ -667,11 +672,11 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 
     fn replace_parent_and_children(&mut self, replace: &K, del_node: &Node<K, ()>) -> (K, Direction, Option<K>) {
-        let replace = self.get_node(replace).expect("Node should exist.");
+        let replace = self.get_node(replace).expect("Node should exist.").clone();
         let non_empty_child = replace.left_child.clone().or(replace.right_child.clone());
         // rewire possible child of replace if replace and del_node are not parent and child.
         if replace.parent.as_ref() != Some(&del_node.key) {
-            non_empty_child.as_ref().map(|k| self.get_mut_node(k).expect("Replace child not in store but present in replace as child").parent = replace.parent.clone());
+            non_empty_child.clone().map(|k| self.get_mut_node(&k).expect("Replace child not in store but present in replace as child").parent = replace.parent.clone());
         }
         let replace_parent_key = replace.parent.clone().expect("should have parent because it is a child of the del_node.");
         (replace_parent_key, replace.direction_to_parent().unwrap(), non_empty_child)
@@ -893,10 +898,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         root.parent = Some(child.clone());
     }
     fn rotate_rewire_parent(&mut self, root: &K, child: &K) -> Option<K> {
-        let parent_id = self.get_node(root).expect("rotate root does not exist").parent;
-        parent_id.as_ref().map(|parent_id| {
-            self.get_mut_node(parent_id).expect("Parent of rotate root not in store").replace_child(root, Some(child.clone()))
+        let parent = self.get_node(root).expect("rewire Node should exist").parent.clone();
+        parent.as_ref().map(|parent| {
+            self.get_mut_node(parent).expect("Parent of rotate root not in store").replace_child(root, Some(child.clone()))
         });
-        parent_id
+        parent
     }
 }
