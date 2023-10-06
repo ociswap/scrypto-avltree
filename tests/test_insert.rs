@@ -2,8 +2,9 @@ use pretty_assertions::assert_eq;
 use scrypto::prelude::*;
 use scrypto_testenv::TestHelperExecution;
 
-mod helper_avl_tree;
 use helper_avl_tree::*;
+
+mod helper_avl_tree;
 
 // structural tests
 #[test]
@@ -84,6 +85,7 @@ fn test_double_insert() {
         assert_eq!(value, 0, "value should have been overwritten with 0");
     }
 }
+
 #[test]
 fn remove_last_inserted() {
     let vector = vec![74, 5, 48, 27, 90, 35, 82, 99, 1, 6];

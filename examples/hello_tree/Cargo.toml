@@ -11,7 +11,7 @@ scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1
 transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-scrypto_avltree = { git = "https://github.com/ociswap/scrypto-avltree", branch = "main", version = "0.1.0" }
+scrypto_avltree = { git = "https://github.com/ociswap/scrypto-avltree", version = "0.1.0" }
 
 [profile.release]
 opt-level = 's'        # Optimize for size.

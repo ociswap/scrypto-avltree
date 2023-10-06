@@ -1,31 +1,35 @@
-use scrypto::prelude::*;
 use std::collections::VecDeque;
+use std::hash::Hash;
+
+use scrypto::prelude::*;
+
 use crate::avl_tree::AvlTree;
 
 // Debugging functions
-pub fn check_health<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
-    check_health_rec(tree, tree.root, true);
+pub fn check_health<K: ScryptoSbor + Hash + Ord + Clone + Debug + Display, V: Clone + ScryptoSbor>(tree: &mut AvlTree<K, V>) {
+    let root = tree.root.clone();
+    check_health_rec(tree, root.as_ref(), true);
 }
 
-fn check_health_rec<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>, key: Option<i32>, panic: bool) -> (i32, Option<i32>) {
+fn check_health_rec<K: Clone + ScryptoSbor + Hash + Ord + Debug + Display, V: Clone + ScryptoSbor>(tree: &mut AvlTree<K, V>, key: Option<&K>, panic: bool) -> (i32, Option<K>) {
     if key.is_none() {
         return (0, None);
     }
     let key = key.unwrap();
-    let node = tree.get(&key).expect("Node of subtree should exist.");
-    let left = node.left_child;
-    let right = node.right_child;
+    let node = tree.get_node(&key).cloned().expect("Node of subtree should exist.");
+    let left = node.left_child.as_ref();
+    let right = node.right_child.as_ref();
     let (height_left, parent_left) = check_health_rec(tree, left, panic);
     let (height_right, parent_right) = check_health_rec(tree, right, panic);
     assert_eq!(
         parent_left,
-        node.left_child.map(|_| node.key),
+        node.left_child.as_ref().map(|_| node.key.clone()),
         "Parent of left child of node {} is not correct.",
         node.key
     );
     assert_eq!(
         parent_right,
-        node.right_child.map(|_| node.key),
+        node.right_child.as_ref().map(|_| node.key.clone()),
         "Parent of right child of node {} is not correct.",
         node.key
     );
@@ -50,21 +54,21 @@ fn check_health_rec<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>, key: Option<
             debug!("Balance factor is too high for node {}.", node.key);
         }
     }
-    (height_left.max(height_right) + 1, node.parent)
+    (height_left.max(height_right) + 1, node.parent.clone())
 }
 
-pub fn print_tree_nice<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
+pub fn print_tree_nice<K: ScryptoSbor + Debug + Display + Hash + Ord + Clone, V: ScryptoSbor + Clone>(tree: &mut AvlTree<K, V>, place_holder: K) {
     // Works best if keys are between 10 and 99 because of formatting.
-    let mut levels: HashMap<i32, HashMap<i32, i32>> = HashMap::new();
-    let mut queue: VecDeque<(i32, i32, i32)> = VecDeque::new();
+    let mut levels: HashMap<i32, HashMap<i32, K>> = HashMap::new();
+    let mut queue: VecDeque<(K, i32, i32)> = VecDeque::new();
     if tree.root.is_none() {
         debug!("Empty tree");
         return;
     }
-    queue.push_back((tree.root.unwrap(), 0, 0)); // root is at depth 0, position 0.
+    queue.push_back((tree.root.clone().unwrap(), 0, 0)); // root is at depth 0, position 0.
 
     while let Some((node_key, depth, pos)) = queue.pop_front() {
-        let node = tree.get(&node_key).expect("Node should exist.");
+        let node = tree.get_node(&node_key).expect("Node should exist.");
 
         if !levels.contains_key(&depth) {
             levels.insert(depth, HashMap::new());
@@ -73,10 +77,10 @@ pub fn print_tree_nice<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
         levels.get_mut(&depth).unwrap().insert(pos, node_key);
         // debug!("Node {} at depth {} and position {}", node_key, depth, pos); use this, when there is a loop in the tree -> infinite depth
 
-        if let Some(left) = node.left_child {
+        if let Some(left) = node.left_child.clone() {
             queue.push_back((left, depth + 1, pos * 2));
         }
-        if let Some(right) = node.right_child {
+        if let Some(right) = node.right_child.clone() {
             queue.push_back((right, depth + 1, pos * 2 + 1));
         }
     }
@@ -98,7 +102,7 @@ pub fn print_tree_nice<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
 
         for pos in 0..=2.pow(depth as u32) as i32 - 1 {
             if let Some(node_key) = level.get(&pos) {
-                let node = tree.get(node_key).expect("Node should exist.");
+                let node = tree.get_node(node_key).expect("Node should exist.");
                 node_keys.push(format!("{}", node.key.to_string()));
                 let balance_factor = match node.balance_factor {
                     2 => "+2",
@@ -109,9 +113,9 @@ pub fn print_tree_nice<T: ScryptoSbor + Clone>(tree: &AvlTree<i32, T>) {
                     _ => "??",
                 };
                 balance_factors.push(format!("{}", balance_factor));
-                parents.push(format!("{}", node.parent.unwrap_or(-1).to_string()));
-                nexts.push(format!("{}", node.next.unwrap_or(-1).to_string()));
-                prevs.push(format!("{}", node.prev.unwrap_or(-1).to_string()));
+                parents.push(format!("{}", node.parent.clone().unwrap_or(place_holder.clone()).to_string()));
+                nexts.push(format!("{}", node.next.clone().unwrap_or(place_holder.clone()).to_string()));
+                prevs.push(format!("{}", node.prev.clone().unwrap_or(place_holder.clone()).to_string()));
             } else {
                 node_keys.push("--".to_string());
                 parents.push("--".to_string());

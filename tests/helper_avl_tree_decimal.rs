@@ -37,7 +37,7 @@ impl TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_function(
             self.env.package_address,
-            "AVLContainer",
+            "AVLContainerDecimal",
             "instantiate",
             manifest_args!(),
         );
@@ -61,8 +61,8 @@ impl TestHelper {
 
     pub fn insert(
         &mut self,
-        key: i32,
-        value: i32,
+        key: Decimal,
+        value: Decimal,
     ) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
@@ -73,7 +73,7 @@ impl TestHelper {
         self.env.new_instruction("insert", 1, 0);
         self
     }
-    pub fn get(&mut self, key: i32) {
+    pub fn get(&mut self, key: Decimal) {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
             self.tree_address.unwrap(),
@@ -82,7 +82,7 @@ impl TestHelper {
         );
         self.env.new_instruction("get", 1, 0);
     }
-    pub fn delete(&mut self, key: i32) {
+    pub fn delete(&mut self, key: Decimal) {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
             self.tree_address.unwrap(),
@@ -117,9 +117,9 @@ impl TestHelper {
     }
     pub fn update_values(
         &mut self,
-        start_key: i32,
-        end_key: i32,
-        value: i32,
+        start_key: Decimal,
+        end_key: Decimal,
+        value: Decimal,
     ) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
@@ -132,8 +132,8 @@ impl TestHelper {
     }
     pub fn get_range_back_both_included(
         &mut self,
-        key1: i32,
-        key2: i32,
+        key1: Decimal,
+        key2: Decimal,
     ) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
@@ -146,8 +146,8 @@ impl TestHelper {
     }
     pub fn get_range_back_both_excluded(
         &mut self,
-        key1: i32,
-        key2: i32,
+        key1: Decimal,
+        key2: Decimal,
     ) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
@@ -160,8 +160,8 @@ impl TestHelper {
     }
     pub fn get_range_back(
         &mut self,
-        key1: i32,
-        key2: i32,
+        key1: Decimal,
+        key2: Decimal,
     ) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
@@ -174,8 +174,8 @@ impl TestHelper {
     }
     pub fn get_range(
         &mut self,
-        key1: i32,
-        key2: i32,
+        key1: Decimal,
+        key2: Decimal,
     ) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
@@ -188,27 +188,27 @@ impl TestHelper {
     }
 }
 
-pub fn test_range(vector: Vec<i32>, to_delete: Vec<i32>) {
+pub fn test_range(vector: Vec<Decimal>, to_delete: Vec<Decimal>) {
     let mut helper = TestHelper::new();
     helper.instantiate_default(false);
     for i in vector.iter() {
         println!("inserting {:?}", i);
         helper.insert(*i, *i);
-        // helper.print();
+        helper.print();
         helper.check_health();
         helper.execute_expect_success(true);
     }
 
-    let minimum = i32::MIN;
-    let maximum = i32::MAX;
+    let minimum = Decimal::MIN;
+    let maximum = Decimal::MAX;
     helper.get_range(minimum, maximum);
     let receipt = helper.execute_expect_success(true);
-    let output: Vec<Vec<i32>> = receipt.outputs("get_range");
+    let output: Vec<Vec<Decimal>> = receipt.outputs("get_range");
     let output = output[0].clone();
     println!("to_delete: {:?}", to_delete);
     println!("vector: {:?}", vector);
     println!("Output: {:?}", output);
-    let mut last = i32::MIN;
+    let mut last = Decimal::MIN;
     for i in output.clone() {
         assert!(last < i, "range_not_sorted {:?}", vector);
         last = i;
@@ -218,14 +218,14 @@ pub fn test_range(vector: Vec<i32>, to_delete: Vec<i32>) {
     }
     for i in to_delete.iter().rev() {
         helper.delete(*i);
-        // helper.print();
-        // println!("Deleting {}", i);
+        helper.print();
+        println!("Deleting {}", i);
         helper.check_health();
         helper.execute_expect_success(true);
     }
     helper.print();
-    let mut minimum = i32::MAX;
-    let mut maximum = i32::MIN;
+    let mut minimum = Decimal::MAX;
+    let mut maximum = Decimal::MIN;
     for i in vector.clone() {
         if i < minimum {
             minimum = i;
@@ -237,7 +237,7 @@ pub fn test_range(vector: Vec<i32>, to_delete: Vec<i32>) {
     // Maximum is exclusive.
     helper.get_range(minimum, maximum + 1);
     let receipt = helper.execute_expect_success(true);
-    let output: Vec<Vec<i32>> = receipt.outputs("get_range");
+    let output: Vec<Vec<Decimal>> = receipt.outputs("get_range");
     let output = output[0].clone();
     println!("to_delete: {:?}", to_delete);
     println!("vector: {:?}", vector);
