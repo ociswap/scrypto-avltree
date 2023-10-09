@@ -5,7 +5,29 @@ use scrypto_testenv::TestHelperExecution;
 use helper_avl_tree::*;
 
 mod helper_avl_tree;
-
+#[test]
+fn replace_still_in_range() {
+    let vec = vec![26, 18, 34, 14, 20, 30, 38, 12, 16, 18, 22, 28, 32, 36, 40];
+    let mut helper = TestHelper::new();
+    helper.instantiate_default(false);
+    for i in vec.clone() {
+        helper.insert(i, i);
+        helper.check_health();
+        helper.execute_expect_success(true);
+    }
+    helper.delete(26);
+    helper.check_health();
+    helper.execute_expect_success(true);
+    let minimum = i32::MIN;
+    let maximum = i32::MAX;
+    helper.get_range(minimum, maximum);
+    let receipt = helper.execute_expect_success(true);
+    let output: Vec<Vec<i32>> = receipt.outputs("get_range");
+    let output = output[0].clone();
+    for i in vec {
+        assert!(output.contains(&i) || i == 26, "Value missing in the iterator");
+    }
+}
 #[test]
 fn test_delete_root() {
     let mut helper = TestHelper::new();
