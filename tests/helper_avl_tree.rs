@@ -1,32 +1,35 @@
-use std::mem;
-
 use lazy_static::lazy_static;
-use radix_engine::blueprints::package::PackageDefinition;
+use radix_engine::{
+    blueprints::package::PackageDefinition,
+    system::system_modules::execution_trace::ResourceSpecifier::Amount,
+};
 use scrypto::prelude::*;
 use scrypto_testenv::*;
+use std::mem;
 use transaction::builder::ManifestBuilder;
 
-impl TestHelperExecution for TestHelper {
-    fn environment(&mut self) -> &mut TestEnvironment {
-        &mut self.env
-    }
-}
+
+
 lazy_static! {
     static ref PACKAGE: (Vec<u8>, PackageDefinition) = compile_package(this_package!());
 }
-
 pub struct TestHelper {
     env: TestEnvironment,
     tree_address: Option<ComponentAddress>,
 }
-
+impl TestHelperExecution for TestHelper {
+    fn env(&mut self) -> &mut TestEnvironment {
+        &mut self.env
+    }
+}
 impl TestHelper {
     pub fn new() -> TestHelper {
-        let environment = TestEnvironment::new(&PACKAGE);
+        // let environment = TestEnvironment::new(&PACKAGE);
+        let env = TestEnvironment::new(vec![("test", &PACKAGE)]);
 
 
         TestHelper {
-            env: environment,
+            env: env,
             tree_address: None,
         }
     }
@@ -36,7 +39,7 @@ impl TestHelper {
     ) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_function(
-            self.env.package_address,
+            self.env.package_address("test"),
             "AVLContainer",
             "instantiate",
             manifest_args!(),

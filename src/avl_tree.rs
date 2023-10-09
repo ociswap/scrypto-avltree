@@ -38,23 +38,33 @@ impl<'a, K: ScryptoSbor, V: ScryptoSbor> DerefMut for ItemRefMut<'a, K, V> {
 
 #[derive(ScryptoSbor, Clone)]
 pub(crate) struct Node<K: ScryptoSbor, V: ScryptoSbor> {
+    /// Unique key for this node
     pub(crate) key: K,
     pub(crate) value: V,
+    /// The left and right children of this node in the tree
     pub(crate) left_child: Option<K>,
     pub(crate) right_child: Option<K>,
+    /// The parent of this node in the tree
     pub(crate) parent: Option<K>,
+    /// The next and previous nodes in double linked list. The double linked list is ordered by the keys.
+    /// So to get a sorted list of all keys, we can iterate over these pointers.
     pub(crate) next: Option<K>,
     pub(crate) prev: Option<K>,
+    /// Balance factor: height of right subtree - height of left subtree.
+    /// The heights are never calculated, but the balance factor is updated
+    /// based on the operations (insert, delete, balance) in the tree.
     pub(crate) balance_factor: i32,
 }
 
 impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K, V> {
+    /// Change the pointer of the child of this node in the given direction
     fn set_child(&mut self, direction: Direction, child: Option<K>) {
         match direction {
             Direction::Left => self.left_child = child,
             Direction::Right => self.right_child = child,
         }
     }
+    /// Replace the child of this node based on the old child.
     fn replace_child(&mut self, old_child: &K, new_child: Option<K>) {
         if self.left_child == Some(old_child.clone()) {
             self.left_child = new_child
@@ -64,6 +74,7 @@ impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K
             panic!("Tried to over ride Node but was not a child");
         }
     }
+    /// Get the child of this node in the given direction
     fn get_child(&self, direction: Direction) -> Option<K> {
         match direction {
             Direction::Left => self.left_child.clone(),
@@ -71,45 +82,58 @@ impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K
         }
     }
 
+    /// Get the child of this node in the given direction
     fn get_child_in_key_direction(&self, other_key: &K) -> Option<Option<&K>>{
-        debug!("{}, {}", self.key, other_key);
         match self.key.cmp(other_key){
             Greater => Some(self.left_child.as_ref()),
             Equal => None,
             Less => Some(self.right_child.as_ref()),
         }
     }
+    /// Checks if the node has any children.
+    /// Returns `true` if the node has either a left or a right child, otherwise returns `false`.
     fn has_child(&self) -> bool {
         self.left_child.is_some() || self.right_child.is_some()
     }
+    /// Determines the direction of the imbalance based on the balance factor.
+    /// Returns the direction of the heavier subtree or `None` if the tree is balanced.
     fn get_imbalance_direction(&self) -> Option<Direction> {
         Direction::from_balance_factor(self.balance_factor)
     }
+
+    /// Sets the node's previous or next pointer based on the provided direction.
+    /// - `direction`: The direction to set (either `Left` for previous or `Right` for next).
+    /// - `node`: The key of the node to be set as previous or next.
     fn set_prev_next(&mut self, direction: Direction, node: Option<K>) {
         match direction {
             Direction::Left => self.prev = node,
             Direction::Right => self.next = node,
         }
     }
+
+    /// Retrieves the node's previous or next key based on the provided direction.
+    /// Returns the key of the neighboring node in the given direction or `None` if there's no such neighbor.
     fn get_prev_next(&self, direction: Direction) -> Option<K> {
         match direction {
             Direction::Left => self.prev.clone(),
             Direction::Right => self.next.clone(),
         }
     }
+
+    /// Determines the node's direction relative to its parent.
+    /// Returns `Some(Direction)` indicating whether this node is to the left or right of its parent, or `None` if there's no parent.
     fn direction_to_parent(&self) -> Option<Direction> {
         self.parent.as_ref().map(|parent| {
             Direction::from_ordering(parent.cmp(&self.key)).expect("Nodes should be unequal")
         })
     }
-    fn direction_from_parent(&self) -> Option<Direction> {
-        self.parent.as_ref().map(|parent| {
-            Direction::from_ordering(self.key.cmp(parent)).expect("Nodes should be unequal")
-        })
-    }
+    /// Determines the direction of another node relative to this node.
+    /// Returns `Some(Direction)` indicating whether the other node is to the left or right of this node.
     fn direction_from_other(&self, other: K) -> Option<Direction> {
         Some(Direction::from_ordering(other.cmp(&self.key)).expect("Nodes should be unequal"))
     }
+    /// Retrieves the next node's key in the linked list in the specified direction.
+    /// Returns the key of the node in the given direction or `None` if there's no such node.
     fn next(&self, direction: Direction) -> Option<K> {
         match direction {
             Direction::Left => self.prev.clone(),
@@ -118,6 +142,7 @@ impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K
     }
 }
 
+/// Represents a direction, either `Left` or `Right`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Direction {
     Left,
@@ -131,27 +156,35 @@ impl Direction {
             Self::Right => Self::Left,
         }
     }
-    fn is_inside<K: Ord>(&self, value: &K, other: Bound<&K>) -> bool {
+
+    /// Determines if the node's key lies within the specified boundary.
+    ///
+    /// - `node`: The key of the node.
+    /// - `bound`: The boundary to check against.
+    fn node_is_inside<K: Ord>(&self, node: &K, bound: Bound<&K>) -> bool {
         match self {
-            Self::Left => match other {
+            Self::Left => match bound {
                 Bound::Unbounded => true,
-                Bound::Included(other) => value >= other,
-                Bound::Excluded(other) => value > other,
+                Bound::Included(other) => node >= other,
+                Bound::Excluded(other) => node > other,
             },
-            Self::Right => match other {
+            Self::Right => match bound {
                 Bound::Unbounded => true,
-                Bound::Included(other) => value <= other,
-                Bound::Excluded(other) => value < other,
+                Bound::Included(other) => node <= other,
+                Bound::Excluded(other) => node < other,
             }
         }
     }
 
+    /// Returns a numeric representation for the direction.
+    /// These are aligned with the balance factor: positive for `Right` and negative for `Left`.
     fn direction_factor(&self) -> i32 {
         match self {
             Self::Left => -1,
             Self::Right => 1,
         }
     }
+    /// Determines the direction based on a given balance factor.
     fn from_balance_factor(balance_factor: i32) -> Option<Self> {
         match balance_factor.signum() {
             -1 => Some(Self::Left),
@@ -159,6 +192,7 @@ impl Direction {
             _ => None,
         }
     }
+    /// Determines the direction based on a ordering comparison
     fn from_ordering(ordering: Ordering) -> Option<Self> {
         match ordering {
             Less => Some(Self::Left),
@@ -167,6 +201,21 @@ impl Direction {
         }
     }
 }
+
+/// `NodeIterator` iterates over nodes in a doubly-linked list structure,
+/// represented by the `next` and `prev` pointers, which are stored in
+/// a key-value store. The nodes are traversed in a specific direction
+/// until a specified bound is reached.
+///
+/// The iterator relies on the provided key-value store (`store`) to fetch
+/// nodes by their keys. Each iteration fetches the node's value, advancing
+/// the iterator based on the direction until the boundary is reached.
+///
+/// # Parameters
+/// - `current`: The key of the current node to begin iterating from.
+/// - `direction`: The direction to move in the linked list (`Left` or `Right`).
+/// - `end`: The boundary key to stop iteration.
+/// - `store`: The reference to the key-value store containing the linked nodes.
 
 pub struct NodeIterator<'a, K: ScryptoSbor, V: ScryptoSbor, > {
     current: Option<K>,
@@ -178,10 +227,16 @@ pub struct NodeIterator<'a, K: ScryptoSbor, V: ScryptoSbor, > {
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + Clone> Iterator for NodeIterator<'a, K, V> {
     type Item = V;
 
+    /// Advances the iterator to the next node and returns the value.
+    ///
+    /// The iterator moves in the specified direction. If the next node in that direction
+    /// exists and is within the specified boundary (`end`), it fetches the value from
+    /// that node. If no such node exists, or it is outside the boundary, the iterator
+    /// stops and returns `None` on subsequent calls.
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.store.get(&self.current.clone()?).expect("Node not found");
         let next = node.next(self.direction);
-        self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())) {
+        self.current = match next.as_ref().map(|k| self.direction.node_is_inside(k, self.end.as_ref())) {
             Some(true) => next,
             _ => None,
         };
@@ -197,28 +252,12 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
     store: &'a mut KeyValueStore<K, Node<K, V>>,
 }
 
-// This cannot be done without unsafe! If you want to try it yourself you need to add self.current in the struct (an optional KeyValueEntryRefMut<...>)
-// impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display, V: ScryptoSbor + Clone> Iterator for NodeIteratorMut<'a, K, V> {
-//     type Item = ItemRefMut<'a, K, V>;
-//
-//     fn next(&mut self) -> Option<Self::Item> {
-//         let node: KeyValueEntryRefMut<'a, Node<K,V>> = self.store.get_mut(&self.current.clone()?).unwrap();
-//
-//         let next = node.next(self.direction);
-//         self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())){
-//             Some(true) => next,
-//             _ => None,
-//         };
-//         Some(ItemRefMut{item:node})
-//     }
-// }
-
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display +Debug, V: ScryptoSbor + Clone> NodeIteratorMut<'a, K, V> {
     pub fn for_each(&mut self, mut function: impl FnMut(&mut V)) {
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
-            self.current = match next.as_ref().map(|k| self.direction.is_inside(k, self.end.as_ref())) {
+            self.current = match next.as_ref().map(|k| self.direction.node_is_inside(k, self.end.as_ref())) {
                 Some(true) => next,
                 _ => None
             };
@@ -239,8 +278,11 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display +Debug, V: ScryptoSbor + Cl
 ///
 #[derive(ScryptoSbor)]
 pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
+    /// The root of the tree.
     pub(crate) root: Option<K>,
+    /// The store of the tree, the node stores the key, value, and navigation pointers in the tree, they are more explained in the Node struct.
     store: KeyValueStore<K, Node<K, V>>,
+    /// Cache the node information without the value.
     store_cache: HashMap<K, Node<K, ()>>,
 }
 
@@ -279,18 +321,20 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         self.store.get_mut(key).map(|n| ItemRefMut { item: n })
     }
 
-    /// Return the internal representation of the tree, for the health checking.
+    /// Return the internal representation of the tree, public in crate for the health checking.
     pub(crate) fn get_node(&mut self, key: &K) -> Option<&Node<K, ()>> {
         self.cache_if_missing(key);
         // Carefully this is not synced with the store!
         self.store_cache.get(&key)
     }
 
+    /// Return the internal representation of the tree.
     fn get_mut_node(&mut self, key: &K) -> Option<&mut Node<K, ()>> {
         self.cache_if_missing(key);
         self.store_cache.get_mut(key)
     }
 
+    /// Caches the node information from the radix KV store.
     fn cache_if_missing(&mut self, key: &K) {
         if !self.store_cache.contains_key(&key) {
             self.store.get(&key).map(|data| {
@@ -394,6 +438,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> + Debug {
         return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
+    /// Wrapper function for range_mut and range_back_mut.
     fn range_mut_internal(&mut self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIteratorMut<K, V> {
         let start = self.range_get_start(start_bound, direction);
         NodeIteratorMut {
@@ -403,6 +448,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             store: &mut self.store,
         }
     }
+    /// Wrapper function for range and range_back.
     fn range_internal(&self, start_bound: Bound<&K>, end_bound: Bound<&K>, direction: Direction) -> NodeIterator<K, V> {
         let start = self.range_get_start(start_bound, direction);
         NodeIterator {
@@ -413,6 +459,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         }
     }
 
+    /// Get the first node that is inside the range. If the bound is in the tree O(1), otherwise O(log n).
     fn range_get_start(&self, start_bound: Bound<&K>, direction: Direction) -> Option<K> {
         let start = match start_bound {
             Bound::Included(k) => self.store.get(k).map(|n| n.key.clone()),
@@ -424,12 +471,15 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         start
     }
 
+    /// Finds the initial node within the specified range based on the given direction.
+    /// Iteratively traverses the tree and returns the most left or right node in the tree within the range.
+    /// The direction parameter determines if it is left or right.
     fn find_first_node(&self, lower_bound: Bound<&K>, direction: Direction) -> Option<K> {
         let mut current = self.root.clone();
         let mut result = None;
         while current.is_some() {
             let node = self.store.get(&current.clone().unwrap()).expect("Node of subtree should exist.");
-            match direction.is_inside(&node.key, lower_bound) {
+            match direction.node_is_inside(&node.key, lower_bound) {
                 true => {
                     current = node.get_child(direction).clone();
                 }
@@ -459,18 +509,17 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         }
         let mut parent = self.insert_node_in_empty_spot(&key, value);
         let mut deepen = true;
-        while let Some((node, insert_direction)) = parent {
+        while deepen && parent.is_some(){
+            let (node, insert_direction) = parent.unwrap();
             let cached_node = self.get_mut_node(&node).expect("Parent of insert should exist");
-            parent = cached_node.parent.clone().zip(cached_node.direction_from_parent());
+            parent = cached_node.parent.clone().zip(cached_node.direction_to_parent().map(|d| d.opposite()));
             if deepen {
                 deepen = cached_node.balance_factor == 0;
                 cached_node.balance_factor += insert_direction.direction_factor();
             }
             if cached_node.balance_factor.abs() == 2 {
-                // This compiles even with cached_node being borrowed mutably, because rust understands that cached node is not used anymore.
                 self.balance(&node, insert_direction);
             }
-            // let a = cached_node.balance_factor;
             if !deepen {
                 break;
             }
@@ -479,6 +528,19 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         None
     }
 
+    /// Inserts a new key value pair into the tree.
+    ///
+    /// This function searches for an appropriate position for the key-value pair
+    /// in the tree. If the tree is empty, the key-value pair becomes the root.
+    /// Otherwise, it's inserted as a child of an existing node.
+    /// If the key already exists in the tree, the function panics.
+    ///
+    /// Returns:
+    /// - Some((K, Direction)): When the key-value pair is added to the tree,
+    ///   returning the key of the parent node and the direction where the new
+    ///   node was inserted.
+    /// - None: When the tree is empty and the key-value pair becomes the root.
+    ///
     fn insert_node_in_empty_spot(&mut self, key: &K, value: V) -> Option<(K, Direction)> {
         let mut current = self.root.clone();
         let mut parent = None;
@@ -509,6 +571,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         }
     }
 
+    /// Adds a new node to the primary store and a reference entry to the cache.
     fn add_node(
         &mut self,
         parent: Option<K>,
@@ -545,6 +608,12 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         );
     }
 
+    /// Inserts a node into the tree and adjusts the surrounding node pointers accordingly.
+    ///
+    /// This function inserts a new node as a child of the specified parent in the given direction (`dir`).
+    /// It also adjusts the navigation pointers (i.e., `prev` and `next`) of the neighboring nodes
+    /// to maintain the integrity of the doubly-linked list structure.
+    ///
     fn insert_node_and_adjust_pointers(
         &mut self,
         parent_key: &K,
@@ -602,7 +671,21 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         self.flush_cache();
         self.store.remove(&key).map(|n| n.value)
     }
-
+    /// Balances the tree following a node deletion.
+    ///
+    /// After a node is deleted from the tree, the balance factor of the ancestors may be affected.
+    /// This method traverses up the tree from the deletion/replacement parent, adjusting the balance factors
+    /// and potentially performing rotations to ensure that the AVL tree properties are maintained.
+    ///
+    /// The method operates iteratively, starting from a specified node and moving upwards towards
+    /// the root. Balancing is performed based on the provided direction (`Direction`), indicating
+    /// the side where the deletion took place.
+    ///
+    /// # Parameters
+    /// - `node_tuple`: Contains the starting node key and the direction of the child that was deleted
+    /// or where the tree got shortened. If `None`, the balancing procedure is not initiated.
+    /// - `shortened`: Indicates if the height of the subtree has decreased as a result of the deletion.
+    /// Balancing will continue upwards until this is `false`.
     fn balance_tree_after_delete(
         &mut self,
         mut node_tuple: Option<(K, Direction)>,
@@ -629,19 +712,40 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             node_tuple = parent_before_balance.zip(balance_child_direction);
         }
     }
+    /// Adjusts the tree structure after a node deletion.
+    /// When deleting a node from a binary tree, it's possible that the tree structure
+    /// will need to be modified to maintain the binary search property. This function
+    /// handles these adjustments by ensuring that the links (or "wires") between nodes
+    /// are correctly set after the deletion.
+    ///
+    /// # Arguments
+    ///
+    /// * `del_node_key` - The key of the node that is going to be deleted.
+    ///
+    /// # Returns
+    ///
+    /// * A tuple consisting of:
+    ///     * An `Option` containing a tuple with the key of the parent node and its
+    ///       direction (`Left` or `Right`) relative to its parent. The parent node is either:
+    ///       the parent of delete node, or the replacement node (if delete node was replaced).
+    ///       `None` if the node had no parent (i.e., it was the root).
+    ///     * A boolean indicating if the subtree was shortened as a result of the deletion.
     fn rewire_tree_for_delete(&mut self, del_node_key: &K) -> (Option<(K, Direction)>, bool) {
         let del_node = self.get_node(del_node_key).expect("Node should be present, because this gets checked in the beginning of delete.");
         let del_node = del_node.clone();
         let del_node_parent_tuple = del_node.parent.clone().zip(del_node.direction_to_parent());
+        // rewire next and previous (if there is a replace node it is either next or previous so this works out without information about the replace node)
         self.rewire_next_and_previous(&del_node);
         let replace_node = self.calculate_replace_node(&del_node);
 
-        del_node.parent.as_ref().map(|parent|
-            self.get_mut_node(&parent).expect("Parent not in KVStore").replace_child(&del_node.key, replace_node.clone())
-        );
-        let (replace_parent_tuple, shorten) = replace_node.clone()
-            .map(|n| self.rewire_replace_node(&n, &del_node))
-            .unzip();
+        // let (replace_parent_tuple, shorten) = replace_node.clone()
+        //     .map(|n| self.rewire_replace_node(&n, &del_node))
+        //     .unzip();
+        let (replace_parent_tuple, shorten) = match replace_node.clone() {
+            Some(node) => Some(self.rewire_replace_node(&node, &del_node)).unzip(),
+            None => (None, Some(true))
+        };
+        self.replace_del_node_in_parent(&del_node, replace_node.clone());
 
         // Check if the root has to be replaced.
         if self.root == Some(del_node.key.clone()) {
@@ -650,18 +754,106 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
 
         (replace_parent_tuple.or(del_node_parent_tuple), shorten.unwrap_or(true))
     }
+    fn calculate_replace_node(&mut self, del_node: &Node<K, ()>) -> Option<K> {
+        if !del_node.has_child() {
+            return None;
+        }
+        let imbalance_direction = del_node.get_imbalance_direction();
+        let imbalance_next = imbalance_direction.map(|d| del_node.get_prev_next(d).unwrap());
+        let replace_key = imbalance_next.or_else(|| del_node.next.clone().map_or(del_node.prev.clone(), |n| Some(n)));
+        replace_key
+    }
+    fn replace_del_node_in_parent(&mut self, del_node: &Node<K, ()>, replace_node: Option<K>) {
+        del_node.parent.as_ref().map(|parent|
+            self.get_mut_node(&parent).expect("Parent not in KVStore").replace_child(&del_node.key, replace_node)
+        );
+    }
 
+    /// Remove delete node from double linked list.
+    /// Does not need information about the replacement node, because it is either next or previous.
+    /// So it will be correctly linked after this function.
+    fn rewire_next_and_previous(&mut self, del_node: &Node<K, ()>) {
+        // Jump over del_node in next and previous.
+        del_node.next.as_ref().map(|next| self.get_mut_node(next).expect("Next is not in store").prev = del_node.prev.clone());
+        del_node.prev.as_ref().map(|prev| self.get_mut_node(prev).expect("Del node prev is not in store").next = del_node.next.clone());
+    }
+
+    /// Reconfigures the tree structure after a node deletion, focusing on the replacement node.
+    ///
+    /// When a node is deleted, and a replacement node is selected to take its place,
+    /// this function ensures that all the tree and double linked list links are correctly updated.
+    /// This might involve changing the parent of the replacement node, adjusting balance
+    /// factors, or updating child pointers.
+    ///
+    /// # Arguments
+    ///
+    /// * `replace` - The key of the node that will replace the deleted node.
+    /// * `del_node` - The node being deleted.
+    ///
+    /// # Returns
+    ///
+    /// * A tuple consisting of:
+    ///     * A tuple with the key of the parent node of the replacement node and its
+    ///       direction (`Left` or `Right`) relative to its parent. This provides
+    ///       context about which side of the parent the replacement node was on.
+    ///     * A boolean indicating if the subtree was shortened as a result of the re-wiring.
     fn rewire_replace_node(
         &mut self,
         replace: &K,
         del_node: &Node<K, ()>,
     ) -> ((K, Direction), bool) {
-        let (mut replace_parent_key, mut replace_parent_direction, non_empty_child) = self.replace_parent_and_children(replace, &del_node);
+        let replace = self.get_node(replace).expect("Node should exist.").clone();
+        let replace_child = self.rewire_replace_node_children(&replace, del_node);
+        let replace_parent_information = self.rewire_replace_node_parent(&replace, &del_node, replace_child);
+        self.rewire_delete_node_child(del_node, &replace.key);
+        self.get_mut_node(&replace.key).expect("Replace should exist").parent = del_node.parent.clone();
+        replace_parent_information
+    }
+    /// Rewires the children of the replacement node when deleting a node from the tree.
+    ///
+    /// If the replacement node (`replace`) has children, this function will update
+    /// the parent of the replacement node's child.
+    /// This only happens if replacement node and the node to be deleted (`del_node`) are not parent and child.
+    ///
+    /// # Arguments
+    /// * `replace`: The node that is chosen as the replacement during deletion.
+    /// * `del_node`: The node that is being deleted from the tree.
+    ///
+    /// # Returns
+    /// Returns an `Option<K>` that contains the key of the child of the replacement node if it exists; otherwise, returns `None`.
+    fn rewire_replace_node_children(&mut self, replace: &Node<K, ()>, del_node: &Node<K, ()>) -> Option<K> {
+        let replace_child = replace.left_child.clone().or(replace.right_child.clone());
+        // rewire possible child of replace if replace and del_node are not parent and child.
+        if replace.parent.as_ref() != Some(&del_node.key) {
+            replace_child.clone().map(|k| self.get_mut_node(&k).expect("Replace child not in store but present in replace as child").parent = replace.parent.clone());
+        }
+        replace_child
+    }
+
+    /// Rewires the parent of the replacement node after deleting a node from the tree.
+    ///
+    /// This function handles the necessary updates to the parent of the `replace` node,
+    /// IF the `replace` node is the child of the `del_node` node, the parent does not need to be changed,
+    /// because the node to delete will not be in the tree afterwards.
+    /// In this case the balance factor of replace needs to be updated immediately because it is not in the chain of parents.
+    ///
+    /// # Arguments
+    /// * `replace`: The node that is chosen as the replacement during deletion.
+    /// * `del_node`: The node that is being deleted from the tree.
+    /// * `replace_child`: The child node of the `replace` node, if it exists.
+    ///
+    /// # Returns
+    /// Returns a tuple consisting of:
+    /// * A tuple `(K, Direction)` indicating the key of the replacement node's parent and the direction of the replacement node with respect to its parent.
+    /// * A `bool` flag indicating whether the tree was shortened as a result of the rewire operation.
+    fn rewire_replace_node_parent(&mut self, replace: &Node<K, ()>, del_node: &Node<K, ()>, replace_child: Option<K>) -> ((K, Direction), bool) {
+        let mut replace_parent_key = replace.parent.clone().expect("should have parent because it is a child of the del_node.");
+        let mut replace_parent_direction = replace.direction_to_parent().expect("should have parent because it is a child of the del_node.");
         let shorten;
         if del_node.key == replace_parent_key {
             // if parent is node to delete, we do not have to rewrite stuff because node will be lost anyway.
-            // change balance factor of replace because will not be in the parent chain.
-            let replace = self.get_mut_node(replace).expect("Replace should exist");
+            // change balance factor of replace because it will not be in the parent chain.
+            let replace = self.get_mut_node(&replace.key).expect("Replace should exist");
             let replace_balance_factor = del_node.balance_factor.clone() + replace.direction_from_other(del_node.key.clone()).expect("Should have different keys").direction_factor();
             replace.balance_factor = replace_balance_factor;
             shorten = replace_balance_factor == 0;
@@ -670,31 +862,28 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 replace_parent_direction = del_node.direction_to_parent().unwrap();
             });
         } else {
-            self.delete_rewire_replace_parent(replace, &replace_parent_key, non_empty_child, del_node);
+            // Simply switch the pointer in replace parent with the child of replace.
+            let direction = replace.direction_to_parent().expect("Should have parent");
+            let replace_parent = self.get_mut_node(&replace_parent_key).expect("Replace parent should exist");
+            replace_parent.replace_child(&replace.key, replace_child.clone());
+            replace_parent.set_child(direction.opposite(), replace_child);
+            // replace should max have one child so we have to rewire the leftover child:
+            self.get_mut_node(&replace.key).expect("Replace should exist").balance_factor = del_node.balance_factor;
             shorten = true;
         }
-        self.rewire_replace_child(del_node, replace);
-
-        self.get_mut_node(replace).expect("Replace should exist").parent = del_node.parent.clone();
         ((replace_parent_key, replace_parent_direction), shorten)
     }
 
-    fn replace_parent_and_children(&mut self, replace: &K, del_node: &Node<K, ()>) -> (K, Direction, Option<K>) {
-        let replace = self.get_node(replace).expect("Node should exist.").clone();
-        let non_empty_child = replace.left_child.clone().or(replace.right_child.clone());
-        // rewire possible child of replace if replace and del_node are not parent and child.
-        if replace.parent.as_ref() != Some(&del_node.key) {
-            non_empty_child.clone().map(|k| self.get_mut_node(&k).expect("Replace child not in store but present in replace as child").parent = replace.parent.clone());
-        }
-        let replace_parent_key = replace.parent.clone().expect("should have parent because it is a child of the del_node.");
-        (replace_parent_key, replace.direction_to_parent().unwrap(), non_empty_child)
-    }
-    fn rewire_next_and_previous(&mut self, del_node: &Node<K, ()>) {
-        // Jump over del_node in next and previous.
-        del_node.next.as_ref().map(|next| self.get_mut_node(next).expect("Next is not in store").prev = del_node.prev.clone());
-        del_node.prev.as_ref().map(|prev| self.get_mut_node(prev).expect("Del node prev is not in store").next = del_node.next.clone());
-    }
-    fn rewire_replace_child(&mut self, del_node: &Node<K, ()>, replace: &K) {
+    /// Rewires the children of the node being deleted (`del_node`) to the replacement node (`replace`).
+    ///
+    /// After a node has been chosen for deletion, and another node (`replace`) has been selected to take its place,
+    /// this function ensures that the children of the `del_node` are correctly reconnected to the `replace` node.
+    /// This ensures that the tree maintains its structure and integrity after a node deletion.
+    ///
+    /// # Arguments
+    /// * `del_node`: The node that is being deleted from the tree.
+    /// * `replace`: The key of the node that is chosen as the replacement during deletion.
+    fn rewire_delete_node_child(&mut self, del_node: &Node<K, ()>, replace: &K) {
         let children: Vec<(K, Direction)> = [Direction::Left, Direction::Right].into_iter()
             .map(|d| del_node.get_child(d).zip(Some(d)))
             .filter(|k| k.is_some()).map(|k| k.unwrap())
@@ -712,32 +901,26 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             });
         }
     }
-    fn delete_rewire_replace_parent(
-        &mut self,
-        replace: &K,
-        replace_parent_key: &K,
-        non_empty_child: Option<K>,
-        del_node: &Node<K, ()>,
-    ) {
-        let direction = self.get_node(replace).expect("Node should exist").direction_to_parent().expect("Should have parent");
-        let replace_parent = self.get_mut_node(replace_parent_key).expect("Replace parent should exist");
-        replace_parent.replace_child(replace, non_empty_child.clone());
-        replace_parent.set_child(direction.opposite(), non_empty_child);
-        // replace should max have one child so we have to rewire the leftover child:
-        self.get_mut_node(replace).expect("Replace should exist").balance_factor = del_node.balance_factor;
-    }
-    fn calculate_replace_node(&mut self, del_node: &Node<K, ()>) -> Option<K> {
-        if !del_node.has_child() {
-            return None;
-        }
-        let imbalance_direction = del_node.get_imbalance_direction();
-        let imbalance_next = imbalance_direction.map(|d| del_node.get_prev_next(d).unwrap());
-        let replace_key = imbalance_next.or_else(|| del_node.next.clone().map_or(del_node.prev.clone(), |n| Some(n)));
-        replace_key
-    }
+    /// Balances the subtree rooted at `root` by performing AVL rotations.
+    ///
+    /// This function determines which type of AVL balance is needed based on the balance
+    /// factors of the `root` and its child in the `balance_direction`. Depending on the conditions, it then
+    /// delegates to one of the three helper methods to perform the actual balancing.
+    ///
+    /// # Arguments
+    /// * `root`: The key of the node that acts as the root of the subtree that may need balancing.
+    /// * `balance_direction`: The direction (left or right) which indicates the heavier side that triggered the imbalance.
+    ///
+    /// # Returns
+    /// Returns the new balance factor of the node after the rotations.
+    ///
+    /// # Panics
+    /// This function may panic if:
+    /// * The `root` node is not found in the underlying storage. (cannot balance something that is not there)
+    /// * The child node in the `balance_direction` is not found in the underlying storage. (This node should exist because the tree is unbalanced in that direction)
     fn balance(&mut self, root: &K, balance_direction: Direction) -> i32 {
         let child_id = self.get_node(root).expect("Node should exist").get_child(balance_direction).expect("Child should exist");
-        let child_balance_factor = self.get_node(&child_id).expect("Node should exist").balance_factor;
+        let child_balance_factor = self.get_node(&child_id).expect("Child should exist").balance_factor;
         if child_balance_factor.signum() == balance_direction.direction_factor() {
             self.balance_with_subtree_in_same_direction(root, &child_id, balance_direction)
         } else if child_balance_factor == 0 {
@@ -746,7 +929,12 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             self.balance_with_subtree_in_different_direction(root, &child_id, balance_direction)
         }
     }
-
+    /// Performs a single AVL rotation in the scenario where both the `root` and its `child` are imbalanced in the same direction.
+    ///
+    /// This function is used when the subtree that causes the imbalance (referenced by `child`)
+    /// is leaning in the same direction (`imbalance_direction`) as the imbalance at the `root`. (See the example below)
+    /// # Returns
+    /// Returns the new balance factor of the node after the rotation.
     fn balance_with_subtree_in_same_direction(
         &mut self,
         root: &K,
@@ -776,6 +964,13 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         // Balance_factor of new root=child=0
         0
     }
+    /// Performs a single AVL rotation when the balance factor of the child causing imbalance is zero.
+    ///
+    /// This scenario arises when the subtree rooted at `child` has equal depths on both sides but an
+    /// imbalance at the `root` node. (See the example below, node right below C has a higher depth than the A node.)
+    ///
+    /// # Returns
+    /// Returns the new balance factor of the node after the rotation.
     fn balance_with_zero_bf_subtree(
         &mut self,
         root: &K,
@@ -810,6 +1005,14 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         // Balance_factor of new root=child
         imbalance_direction.opposite().direction_factor()
     }
+
+    /// Performs a double AVL rotation to correct imbalances caused by a grandchild.
+    ///
+    /// This function is used when the subtree causing the imbalance is leaning in the opposite
+    /// direction (`imbalance_direction`) as the imbalance at the `root` node. (See example)
+    ///
+    /// # Returns
+    /// Returns the new balance factor of the node after the rotations.
     fn balance_with_subtree_in_different_direction(
         &mut self,
         root: &K,
@@ -850,6 +1053,11 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         self.rotate(imbalance_direction.opposite(), root, &new_root);
         0
     }
+    /// Updates the balance factor of a node based on the balance factor of the new root and the direction of imbalance.
+    ///
+    /// This function adjusts the balance factor of the given `node_id` after a double rotation. The adjustment is based
+    /// on the balance factor of the new root node (`new_root_balance_factor`) after the rotation and the direction
+    /// (`direction`) of the original imbalance.
     fn change_bf_based_on_imbalance_direction(&mut self, node_id: &K, direction:Direction, new_root_balance_factor: i32){
         let root = self.get_mut_node(node_id).expect("Root in balance should exist");
         root.balance_factor = match new_root_balance_factor == direction.direction_factor(){
@@ -857,7 +1065,13 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             true => direction.opposite().direction_factor(),
         };
     }
-
+    /// Performs a tree rotation
+    ///
+    /// This function rotates the subtree rooted at the node `root` in the direction `rotate_direction`,
+    /// with `child` being the child node that will become the new root of the rotated subtree.
+    /// The left child of root is exchanged with the right child of child or vice versa.
+    /// With this one node moves into the left subtree from the right subtree or vice versa.
+    /// Thus the balance factor of the subtree reduces by one or increases by one.
     fn rotate(&mut self, rotate_direction: Direction, root: &K, child: &K) {
         /*
            *  Rotate left:

@@ -6,8 +6,9 @@ use scrypto::prelude::*;
 use scrypto_testenv::*;
 use transaction::builder::ManifestBuilder;
 
+
 impl TestHelperExecution for TestHelper {
-    fn environment(&mut self) -> &mut TestEnvironment {
+    fn env(&mut self) -> &mut TestEnvironment {
         &mut self.env
     }
 }
@@ -22,7 +23,7 @@ pub struct TestHelper {
 
 impl TestHelper {
     pub fn new() -> TestHelper {
-        let environment = TestEnvironment::new(&PACKAGE);
+        let environment = TestEnvironment::new(vec![("test", &PACKAGE)]);
 
 
         TestHelper {
@@ -36,7 +37,7 @@ impl TestHelper {
     ) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_function(
-            self.env.package_address,
+            self.env.package_address("test"),
             "AVLContainerDecimal",
             "instantiate",
             manifest_args!(),
