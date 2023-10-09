@@ -1,9 +1,8 @@
 # Technical insights to the AVL Tree
 ## Introduction
 The tree is similar to a black red tree, that it is a balanced binary tree. 
-The difference is that the AVL tree is more optimised for lookup/query performance instead of insert/write performance.
-We assume that insert/write operations are less frequent than lookup/query operations.
-The AVL tree is a self balancing binary tree, which means that the tree will automatically balance itself after each insert/write operation.
+The difference is that the AVL tree is more optimised for lookup performance instead of insert/write performance.
+The AVL tree will automatically balance itself after each insert/write operation.
 
 ## Tree structure
 As described in the general readme, the tree is implemented with the KVStore of  scrypto to enable lazy loading of the node.
