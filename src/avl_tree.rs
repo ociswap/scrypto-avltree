@@ -244,7 +244,7 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + C
     }
 }
 
-
+/// Mutable node iterator that implements for each
 pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
     current: Option<K>,
     direction: Direction,
@@ -252,7 +252,17 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
     store: &'a mut KeyValueStore<K, Node<K, V>>,
 }
 
+
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display +Debug, V: ScryptoSbor + Clone> NodeIteratorMut<'a, K, V> {
+    /// Calls the provided function on each value in the iterator.
+    ///
+    /// The iterator moves in the specified direction. If the next node in that direction
+    /// exists and is within the specified boundary (`end`), it fetches the value from
+    /// that node. If no such node exists, or it is outside the boundary, the iterator
+    /// stops and returns `None` on subsequent calls.
+    ///
+    /// # Parameters
+    /// - `function`: The function to call on each value.
     pub fn for_each(&mut self, mut function: impl FnMut(&mut V)) {
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
@@ -354,11 +364,14 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             });
         }
     }
+
+    ///  Check if key is present in the tree.
     fn key_present(&mut self, key: &K) -> bool{
         self.cache_if_missing(key);
         self.store_cache.contains_key(key)
     }
 
+    /// empties the cache and writes back the changes to the radix KV store.
     fn flush_cache(&mut self) {
         for (key, value) in self.store_cache.iter() {
             let mut data = self.store.get_mut(key).expect("Node not found");
