@@ -634,31 +634,30 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         value: V,
         dir: Direction,
     ) {
-        let other_neighbour: Option<K>;
         // one neighbour in the double linked list is always the parent and the other is the next or prev of the parent, depending on the direction.
-        other_neighbour = self.get_node(parent_key).expect("Parent should exist").get_prev_next(dir);
+        let other_neighbour = self.get_node(parent_key).expect("Parent should exist").get_prev_next(dir);
+        // If the other neighbour exists, update its pointer to the new node.
         if let Some(neighbour_key) = other_neighbour.clone() {
-            // Set the neighbour's prev_next to the new node.
-            self.get_mut_node(&neighbour_key).expect("Neighbour should exist").set_prev_next(dir.opposite(), Some(key.clone()));
+            let neighbour = self.get_mut_node(&neighbour_key).expect("Neighbour should exist");
+            neighbour.set_prev_next(dir.opposite(), Some(key.clone()));
         }
-        {
+
             // Set the parent's child to the new node.
             let parent = self.get_mut_node(parent_key).expect("Parent should exist");
             parent.set_prev_next(dir, Some(key.clone()));
             parent.set_child(dir, Some(key.clone()));
-        }
+
         // Find the prev and next of the new node.
         let (prev, next) = match other_neighbour.clone() {
             Some(neighbour) => {
-                (Some(parent_key.clone().min(neighbour.clone())), Some(parent_key.clone().max(neighbour)))
+                let min_key = parent_key.clone().min(neighbour.clone());
+                let max_key = parent_key.clone().max(neighbour);
+                (Some(min_key), Some(max_key))
+                // (Some(parent_key.clone().min(neighbour.clone())), Some(parent_key.clone().max(neighbour)))
             }
             None => match dir {
-                Direction::Left => {
-                    (None, Some(parent_key.clone()))
-                }
-                Direction::Right => {
-                    (Some(parent_key.clone()), None)
-                }
+                Direction::Left => (None, Some(parent_key.clone())),
+                Direction::Right => (Some(parent_key.clone()), None),
             }
         };
         self.add_node(Some(parent_key.clone()), &key, value, prev, next);
@@ -744,16 +743,12 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     ///       `None` if the node had no parent (i.e., it was the root).
     ///     * A boolean indicating if the subtree was shortened as a result of the deletion.
     fn rewire_tree_for_delete(&mut self, del_node_key: &K) -> (Option<(K, Direction)>, bool) {
-        let del_node = self.get_node(del_node_key).expect("Node should be present, because this gets checked in the beginning of delete.");
-        let del_node = del_node.clone();
+        let del_node = self.get_node(del_node_key).expect("Node should be present, because this gets checked in the beginning of delete.").clone();
         let del_node_parent_tuple = del_node.parent.clone().zip(del_node.direction_to_parent());
         // rewire next and previous (if there is a replace node it is either next or previous so this works out without information about the replace node)
         self.rewire_next_and_previous(&del_node);
         let replace_node = self.calculate_replace_node(&del_node);
 
-        // let (replace_parent_tuple, shorten) = replace_node.clone()
-        //     .map(|n| self.rewire_replace_node(&n, &del_node))
-        //     .unzip();
         let (replace_parent_tuple, shorten) = match replace_node.clone() {
             Some(node) => Some(self.rewire_replace_node(&node, &del_node)).unzip(),
             None => (None, Some(true))
@@ -767,19 +762,38 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
 
         (replace_parent_tuple.or(del_node_parent_tuple), shorten.unwrap_or(true))
     }
+
+    /// Given a node set for deletion (`del_node`), this function calculates
+    /// which node (if any) should replace the node being deleted in the AVL tree.
+    ///
+    /// Returns:
+    /// - `None` if the node has no children.
+    /// - `Some(K)` where `K` is the key of the replacement node.
     fn calculate_replace_node(&mut self, del_node: &Node<K, ()>) -> Option<K> {
         if !del_node.has_child() {
             return None;
         }
+        // Get the direction of imbalance (if it exists).
         let imbalance_direction = del_node.get_imbalance_direction();
-        let imbalance_next = imbalance_direction.map(|d| del_node.get_prev_next(d).unwrap());
-        let replace_key = imbalance_next.or_else(|| del_node.next.clone().map_or(del_node.prev.clone(), |n| Some(n)));
+
+        // Based on imbalance direction, find the next node.
+        let imbalance_next = imbalance_direction.and_then(|d| del_node.get_prev_next(d));
+        // If there is no imbalance direction, then take any of prev or next.
+        let replace_key = imbalance_next.or(
+            del_node.next.clone().or( del_node.prev.clone())
+        );
         replace_key
     }
+
+    /// Replaces a node set for deletion (`del_node`) in its parent's children
+    /// with the given replacement node key (`replace_node`).
+    ///
+    /// If `replace_node` is `None`, it effectively removes `del_node` from its parent's children.
     fn replace_del_node_in_parent(&mut self, del_node: &Node<K, ()>, replace_node: Option<K>) {
-        del_node.parent.as_ref().map(|parent|
-            self.get_mut_node(&parent).expect("Parent not in KVStore").replace_child(&del_node.key, replace_node)
-        );
+        if let Some(parent_key) = &del_node.parent {
+            let parent_node = self.get_mut_node(&parent_key).expect("Parent not in KVStore");
+            parent_node.replace_child(&del_node.key, replace_node);
+        }
     }
 
     /// Remove delete node from double linked list.
