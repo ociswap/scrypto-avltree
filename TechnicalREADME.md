@@ -1,4 +1,5 @@
-# Technical insights to the AVL Tree
+# Technical readme
+
 ### Introduction
 The AVL tree, named after its inventors Adelson-Velsky and Landis, is a self-balancing binary search tree. 
 While similar in concept to a Red-Black tree, the AVL tree prioritizes lookup operations, ensuring that they remain efficient by keeping the tree height balanced. 
@@ -20,7 +21,8 @@ Instead, it retains pointers to the left and right subtrees.
 Moreover, for enhanced sorted iteration capabilities, each node is equipped with pointers to both its subsequent and preceding nodes in the tree. 
 This doubly linked configuration permits sorted iteration in O(k) time, where 'k' represents the number of nodes to traverse, a significant refinement over the O(log(n) * K) approach.
 
-In essence, each node comprises pointers to its immediate left and right children, the adjacent nodes in the double linked list, and its parent node. 
+In essence, each node comprises pointers to its immediate left and right children, the adjacent nodes in the double linked list, and its parent node.
+The direct predecessor and successor of a node in the double linked list will be called the neighbours of the node. 
 The tree's inherent balance is maintained using a balance factor. 
 This factor is the computed difference in heights between a node's left and right subtrees.
 
@@ -63,32 +65,64 @@ After updated and rebalance
   ````
 In this scenario, node `i` is introduced. The rebalancing process halts at node `a`, given its balance factor was 1, resulting in the tree becoming balanced.
 
-Lastly, when updating the double linked list during the insert operation, the process is straightforward: the node's parent becomes one of its neighbors, while its other neighbor is the former neighbor of the parent.### Delete
+Lastly, when updating the double linked list during the insert operation, the process is straightforward: the node's parent becomes one of its neighbours, while its other neighbour is the former neighbour of the parent.
 ### Delete
 The process of deleting a node from the AVL tree involves three primary steps:
-1. **Node Replacement:** If the node to delete has children, replace it with its successor or predecessor, ensuring the structure of the tree. Following this, update all pointers of the replaced node.
-2. **Pointer Updates:** Revise all pointers within the tree, as well as within the double linked list, to ensure that they correctly reference the replaced node. If there's no replacement node, remove all pointers directing to the deleted node.
-3. **Maintaining Tree Balance:** After removal, it's essential to adjust the balance factors of nodes, starting from the parent of the deleted or replaced node and moving up to the root. If a balance factor is not -1, 0, or 1, rebalancing becomes necessary.
+1. **Node Replacement:** If the node to delete has children, replacement it with its successor or predecessor, ensuring the structure of the tree. Following this, update all pointers of the replacement node.
+2. **Pointer Updates:** Revise all pointers within the tree, as well as within the double linked list, to ensure that they correctly reference the replacement node. If there's no replacement node, remove all pointers directing to the deleted node.
+3. **Maintaining Tree Balance:** After removal, it's essential to adjust the balance factors of nodes, starting from the parent of the deleted or replacement node and moving up to the root. If a balance factor is not -1, 0, or 1, rebalancing becomes necessary.
 
-The first step is to find a replace node, which can be the successor or predecessor node, if they are children of the deleted node.
-Additionally, the pointers to the replace node are updated, with jumping over it in the double linked list, and substituting it with a child in the tree.
-A replace is either a leaf node (no children) or has one child. 
-If there would be two children, the replace node could not be a neighbour of the delete node, because on of the children would be the direct neighbour of the delete node.
-If the deleted node has no children, the node is just deleted, without replacement.
-In the second step all the pointers to the delete node are updated, that all neighbours, children and parents point to the replace node.
-If there is no replace node, the pointers to the deleted node are removed from other nodes.
-After the node is removed from the tree, the balance factors are updated upwards from the replace node parent or the delete node parent.
-The balance factors are updated until the root is reached or the balance factor of a parent is 0. 
-If a node is zero the shortening of the subtree does not affect nodes higher up in the tree, because the subtree has the same height as before because it still has the other side of the tree.
-
-Example:
+#### Replacement node
+The first step is to find a replacement node, which can be the successor or predecessor node, if they are in the subtree of the deleted node.
+If the delete node has no children, it does not need to be replacement. An example with children is shown below.
 ````
+    d
+   / \
+  _    _
+ / \  / \
+_   r r  _
+````
+Both nodes with r can be the replacement node. -> The replacement node is always the closest child of the delete node.
+Additionally, the pointers to the replacement node are updated, with jumping over it in the double linked list, and substituting it with a child in the tree.
+Which replacement node is picked is determined by the balance factor of the delete node, that the delete node does not have to be balanced after the replacement.
+Moving the replacement node into the position of the delete node, creates another whole in the tree.
+However, the replacement node has either no children or only one child.
+If it has no children, the whole does not need to be filled.
+If the replacement node has one child, the child is moved into the position of the replacement node, and the tree structure is restored.
+If there would be two children, the replacement node could not be a neighbour of the delete node in the linked list, because one of the children would be the direct neighbour in the linked list of the delete node (successor/predecessor).
+See example:
+````
+    d
+   / \
+  x   r 	
+     / \
+    _   _
+````
+Assume `r` is the replacement node and the successor of `d`, and `r` has two children.
+The left child of `r` is smaller than `r` and bigger than `d`, thus `r` is not a successor node of `d`, but some node in the left subtree of `r` is the successor.
+Thus, `r` was not a replacement node in the first place. A similar argument can be made for the predecessor.
+#### Pointer updates
+In the second step all the pointers to the delete node are updated, that all neighbours, children and parents point to the replacement node.
+If there is no replacement node, the pointers to the deleted node are removed from other nodes.
+This means the pointer from the parent of delete to the delete node is set to None, and the neighbours of the delete node jump over the delete node in the linked list and point to each other.
+
+#### Balance factor updates
+After the node is removed from the tree, the balance factors are updated upwards from the replacement node parent or the delete node parent.
+The balance factors are updated until the root is reached or the balance factor of a parent is 0. 
+A node has two subtree children with the same height, when a node has a balance factor of 0 before the update.
+If one of these subtrees reduces its height, the balance factor of the node is -1 or 1.
+The height of the node was not reduced, because the other subtree still has the same height, thus the parents further up in the tree do not need to be updated.
+So the update stops when it reaches a node with a balance factor of 0.
+
+````
+     /
     a|0
    / \
   x   b|1
  / \    \
 x   x   d|0
 Node to delete d
+     /
     a|-1
    / \
   x   b|0
@@ -96,8 +130,7 @@ Node to delete d
 x   x  
 ````
 The update reduces `b` to 0 and the update continues with `a`, which is now -1.
-Since `a` was 0 before, the tree the update stops at `a`.
+Since `a` was 0 before, the tree the update stops after it updated `a` and does not continue to the parents of `a`.
 ### Conclusion
-
 The AVL tree, with its self-balancing properties, ensures efficient lookup operations, making it an ideal choice for scenarios where read performance is paramount. The implementation provided leverages scrypto's KVStore for lazy loading and integrates caching mechanisms to further optimize operations. For details on the AVL tree's methods and their underlying mechanics, refer to the provided function docstrings and inline comments.
 For further insight see (https://en.wikipedia.org/wiki/AVL_tree, https://www.geeksforgeeks.org/introduction-to-avl-tree/)
