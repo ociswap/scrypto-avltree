@@ -7,17 +7,26 @@ mod avltree_delete {
     use super::*;
     use helper_avl_tree::*;
 
-    #[test]
-    fn replace_still_in_range() {
-        let mut vec = vec![26, 18, 34, 14, 20, 30, 38, 12, 16, 22, 28, 32, 36, 40];
-        let mut helper = TestHelper::new();
-        helper.instantiate_default(false);
-        for i in vec.clone() {
-            helper.insert(i, i);
-            helper.check_health();
-            helper.execute_expect_success(true);
-        }
-        helper.delete(26);
+mod helper_avl_tree;
+#[test]
+fn replace_still_in_range() {
+    /// Resulting tree:
+    ///                        26
+    ///               18              34
+    ///         14       20      30      38
+    ///      12  16   18   22  28  32  36  40
+    /// After deleting 26:
+    ///                       28
+    ///              18              34
+    ///        14       20      30      38
+    ///     12  16   18   22  _   32  36  40
+    ///
+
+    let vec = vec![26, 18, 34, 14, 20, 30, 38, 12, 16, 18, 22, 28, 32, 36, 40];
+    let mut helper = TestHelper::new();
+    helper.instantiate_default(false);
+    for i in vec.clone() {
+        helper.insert(i, i);
         helper.check_health();
         helper.execute_expect_success(true);
 
