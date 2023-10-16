@@ -11,21 +11,25 @@ To further optimise lookups we have combined our `AVL tree` implemention with a 
 left and right nodes directly in `O(1)` without needing to traverse the tree up and down which would be `O(log n)`.
 
 # Usage
+
 ## Example
 Checkout the example folder, that provides some basic usage examples.
+
 ### Dependencies
 Add avl tree to your toml config:
 ```toml
 [dependencies]
 avl_tree = { git = "https://github.com/ociswap/scrypto-avltree", version = "0.1.0" }
 ```
+
 ### Instantiation 
 Instantiation is rather simple:
 ```rust
 use scrypto::prelude::*;
 use avl_tree::AvlTree;
-let mut tree: AVLTree<Decimal, String> = AVLTree::new();
+let mut tree: AvlTree<Decimal, String> = AvlTree::new();
 ```
+
 ### Insert and get
 Inserting a new key value pair is also straight forward:
 ```rust
@@ -46,6 +50,7 @@ Or to get a mutable reference to the value:
 ```rust
 let value = tree.get_mut(&dec!(1));
 ```
+
 ### Range
 To iterate over the tree you can use the `range`, `range_back` methods.
 It accepts a range of keys and returns an iterator over the key value pairs:
@@ -85,7 +90,6 @@ info!("{}", value);
 ```
 The method returns the value that was deleted from the tree. 
 None is returned, if the key is not present in the tree.
-
 
 # Contribute
 The AVL tree itself is implemented in `avl_tree.rs`. The other modules and files contain helpers for testing.
