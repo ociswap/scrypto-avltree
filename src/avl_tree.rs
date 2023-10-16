@@ -6,7 +6,7 @@ use std::ops::{ Bound, Deref, DerefMut, RangeBounds };
 
 use scrypto::prelude::*;
 
-/// A `AvlTree` is a balanced binary tree.
+/// An `AvlTree` is a balanced binary tree.
 /// It is implemented as a double linked list with a binary tree on top.
 /// The double linked list is used to iterate over the tree in order.
 /// The binary tree is used to balance the tree.
@@ -38,17 +38,18 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 
     /// Returns the value of the given key in a ItemRef.
-    /// Usage:
+    /// ```
     /// let tree = AvlTree::new();
     /// tree.insert(1, 1);
     /// let value = tree.get(&1).unwrap();
     /// assert_eq!(*value, 1);
+    /// ```
     pub fn get(&self, key: &K) -> Option<ItemRef<K, V>> {
         self.store.get(key).map(|node| ItemRef { item: node })
     }
 
     /// Returns the value of the given key in a mutable wrapper, that writes back to the tree on drop.
-    /// Usage:
+    /// ```
     /// let tree = AvlTree::new();
     /// tree.insert(1, 1);
     /// {
@@ -57,9 +58,186 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// }
     /// let value = tree.get(&1).unwrap();
     /// assert_eq!(*value, 2);
+    /// ```
     pub fn get_mut(&mut self, key: &K) -> Option<ItemRefMut<K, V>> {
         self.store.get_mut(key).map(|n| ItemRefMut { item: n })
     }
+
+    /// Inserts a new key value pair into the tree.
+    /// Operation needs in the worst case `2*(log(n)+1)` accesses to the KVStore.
+    ///
+    /// If the key already exists the old value is returned and the new value is inserted.
+    ///
+    /// Example:
+    /// ```
+    /// let tree = AvlTree::new();
+    /// let old_value = tree.insert(1, 1);
+    /// assert_eq!(old_value, None);
+    /// let old_value = tree.insert(1, 2);
+    /// assert_eq!(old_value, Some(1));
+    /// let value = tree.get(&1).unwrap();
+    /// assert_eq!(*value, 2);
+    /// ```
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        if let Some(mut existing_node) = self.store.get_mut(&key) {
+            return Some(mem::replace(&mut existing_node.value, value));
+        }
+        let mut parent = self.insert_node_in_empty_spot(&key, value);
+        let mut deepen = true;
+        while deepen && parent.is_some() {
+            let (node, insert_direction) = parent.unwrap();
+            let cached_node = self.get_mut_node(&node).expect("Parent of insert should exist");
+            parent = cached_node.parent
+                .clone()
+                .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
+            if deepen {
+                deepen = cached_node.balance_factor == 0;
+                cached_node.balance_factor += insert_direction.direction_factor();
+            }
+            if cached_node.balance_factor.abs() == 2 {
+                self.balance(&node, insert_direction);
+            }
+            if !deepen {
+                break;
+            }
+        }
+        self.flush_cache();
+        None
+    }
+
+    /// Deletes the given key from the tree.
+    /// Returns the value of the deleted key if it existed.
+    /// ```
+    /// let tree = AvlTree::new();
+    /// tree.insert(1, 1);
+    /// let value = tree.delete(1);
+    /// assert_eq!(value, Some(1));
+    /// let value = tree.delete(1);
+    /// assert_eq!(value, None);
+    /// let value = tree.get(&1);
+    /// assert_eq!(value, None);
+    /// ```
+    pub fn delete(&mut self, key: &K) -> Option<V> {
+        if !self.contains_key(key) {
+            return None;
+        }
+        let (start_tuple, shortened) = self.rewire_tree_for_delete(key);
+        self.balance_tree_after_delete(start_tuple, shortened);
+        self.flush_cache();
+        self.store.remove(&key).map(|n| n.value)
+    }
+
+    /// Iterate over the tree values in order of the keys.
+    /// Range is normally defined as Included(start) and Excluded(end).
+    ///
+    /// Example:
+    ///
+    /// Tree is initialized with all integers from 0 to 100 and value = key.
+    /// ```
+    /// for i in tree.range(10..20) {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// Gives:
+    /// ```
+    /// 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+    /// ```
+    ///
+    /// The end can also be included either with Included(end) or:
+    /// ```rust
+    /// for i in tree.range(10..=20) {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// Gives:
+    /// ```
+    /// 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+    /// ```
+    pub fn range<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
+        return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
+    }
+
+    /// Iterates backwards over the tree values.
+    ///
+    /// Example:
+    ///
+    /// Tree is initialized with all integers from 0 to 100.
+    /// ```
+    /// for i in tree.range_back(10..20) {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// Gives:
+    /// ```
+    /// 19, 18, 17, 16, 15, 14, 13, 12, 11, 10
+    /// ```
+    ///
+    /// The Include(start) and Exclude(end) can be changed:
+    ///
+    /// E.g. tree is initialized with all integers from 0 to 100.
+    /// ```rust
+    /// for i in tree.range_back((Excluded(10),Included(20))) {
+    ///     println!("{}", i);
+    /// }
+    /// ````
+    ///
+    /// Gives:
+    /// ```
+    /// 20, 19, 18, 17, 16, 15, 14, 13, 12, 11
+    /// ```
+    pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
+        return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
+    }
+
+    /// Mutable iterator over the values that works only with for each.
+    ///
+    /// Example:
+    /// 
+    /// Tree is initialized with all integers from 0 to 100 and value = key.
+    /// ```
+    /// let mut idx = 0
+    /// tree.range_mut(10..20).for_each(|x| {*x = idx; idx += 1;} );
+    /// for i in tree.range(0..30) {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    /// 
+    /// Gives:
+    /// Because the range is sorted after the keys.
+    /// ```
+    /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
+    /// ```
+    pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V>
+        where R: RangeBounds<K> + Debug
+    {
+        return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
+    }
+
+    /// Reversed mutable iterator over the values that works only with for each.
+    ///
+    /// Example:
+    ///
+    /// Tree is initialized with all integers from 0 to 100 and value = key.
+    /// ```
+    /// let mut idx = 0;
+    /// tree.range_back_mut(10..15).for_each(|x| {*x = idx; idx += 1;});
+    /// for i in tree.range(0..30) {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    /// 
+    /// Gives:
+    /// ```
+    /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 3, 2, 1, 0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
+    /// ```
+    pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
+        return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
+    }
+
+    // PRIVATE METHODS
 
     /// Return the internal representation of the tree, public in crate for the health checking.
     pub(crate) fn get_node(&mut self, key: &K) -> Option<&Node<K, ()>> {
@@ -93,7 +271,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 
     ///  Check if key is present in the tree.
-    fn key_present(&mut self, key: &K) -> bool {
+    fn contains_key(&mut self, key: &K) -> bool {
         self.cache_if_missing(key);
         self.store_cache.contains_key(key)
     }
@@ -112,75 +290,20 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         self.store_cache.clear();
     }
 
-    /// Iterates backwards over the tree values:
-    /// Example:
-    /// tree is initialized with all integers from 0 to 100.
-    /// for i in tree.range_back(10..20) {
-    ///   println!("{}", i);
-    /// }
-    /// gives:
-    /// 19, 18, 17, 16, 15, 14, 13, 12, 11, 10
-    /// The Include(start) and Exclude(end) can be changed
-    /// For example:
-    /// tree is initialized with all integers from 0 to 100.
-    /// for i in tree.range_back((Excluded(10),Included(20))) {
-    ///  println!("{}", i);
-    /// }
-    /// gives:
-    /// 20, 19, 18, 17, 16, 15, 14, 13, 12, 11
-    pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
-        return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
-    }
-
-    /// Iterate over the tree values in order of the keys.
-    /// Range is normally defined as Included(start) and Excluded(end).
-    /// Example:
-    /// tree is initialized with all integers from 0 to 100 and value = key.
-    /// for i in tree.range(10..20) {
-    ///    println!("{}", i);
-    /// }
-    /// gives:
-    /// 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
-    /// end can also be included either with Included(end) or:
-    /// tree is initialized with all integers from 0 to 100, and value=key.
-    /// for i in tree.range(10..=20) {
-    ///   println!("{}", i);
-    /// }
-    /// gives:
-    /// 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
-    pub fn range<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
-        return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
-    }
-
-    /// Reversed mutable iterator over the values that works only with for each:
-    /// Example:
-    /// tree is initialized with all integers from 0 to 100 and value = key.
-    /// let mut idx = 0
-    /// tree.range_back_mut(10..15).for_each(|x| {*x = idx; idx += 1;});
-    /// for i in tree.range(0..30) {
-    ///  println!("{}", i);
-    /// }
-    /// gives:
-    /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 3, 2, 1, 0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
-    pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
-        return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
-    }
-
-    /// Mutable iterator over the values that works only with for each:
-    /// Example:
-    /// tree is initialized with all integers from 0 to 100 and value = key.
-    /// let mut idx = 0
-    /// tree.range_mut(10..20).for_each(|x| {*x = idx; idx += 1;} );
-    /// for i in tree.range(0..30) {
-    ///  println!("{}", i);
-    /// }
-    /// gives:
-    /// Because the range is sorted after the keys.
-    /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
-    pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V>
-        where R: RangeBounds<K> + Debug
-    {
-        return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
+    /// Wrapper function for range and range_back.
+    fn range_internal(
+        &self,
+        start_bound: Bound<&K>,
+        end_bound: Bound<&K>,
+        direction: Direction
+    ) -> NodeIterator<K, V> {
+        let start = self.range_get_start(start_bound, direction);
+        NodeIterator {
+            current: start,
+            direction,
+            end: end_bound.cloned(),
+            store: &self.store,
+        }
     }
 
     /// Wrapper function for range_mut and range_back_mut.
@@ -196,22 +319,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             direction,
             end: end_bound.cloned(),
             store: &mut self.store,
-        }
-    }
-
-    /// Wrapper function for range and range_back.
-    fn range_internal(
-        &self,
-        start_bound: Bound<&K>,
-        end_bound: Bound<&K>,
-        direction: Direction
-    ) -> NodeIterator<K, V> {
-        let start = self.range_get_start(start_bound, direction);
-        NodeIterator {
-            current: start,
-            direction,
-            end: end_bound.cloned(),
-            store: &self.store,
         }
     }
 
@@ -241,7 +348,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             let node = self.store
                 .get(&current.clone().unwrap())
                 .expect("Node of subtree should exist.");
-            match direction.node_is_inside(&node.key, lower_bound) {
+            match lower_bound.within_bound(&node.key, direction) {
                 true => {
                     current = node.get_child(direction).clone();
                 }
@@ -252,44 +359,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             }
         }
         result
-    }
-
-    /// Inserts a new key value pair into the tree.
-    /// Operation needs in the worst case 2*(log(n)+1) accesses to the KVStore.
-    /// If the key already exists the old value is returned and the new value is inserted.
-    /// Example:
-    /// let tree = AvlTree::new();
-    /// let old_value = tree.insert(1, 1);
-    /// assert_eq!(old_value, None);
-    /// let old_value = tree.insert(1, 2);
-    /// assert_eq!(old_value, Some(1));
-    /// let value = tree.get(&1).unwrap();
-    /// assert_eq!(*value, 2);
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        if let Some(mut existing_node) = self.store.get_mut(&key) {
-            return Some(mem::replace(&mut existing_node.value, value));
-        }
-        let mut parent = self.insert_node_in_empty_spot(&key, value);
-        let mut deepen = true;
-        while deepen && parent.is_some() {
-            let (node, insert_direction) = parent.unwrap();
-            let cached_node = self.get_mut_node(&node).expect("Parent of insert should exist");
-            parent = cached_node.parent
-                .clone()
-                .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
-            if deepen {
-                deepen = cached_node.balance_factor == 0;
-                cached_node.balance_factor += insert_direction.direction_factor();
-            }
-            if cached_node.balance_factor.abs() == 2 {
-                self.balance(&node, insert_direction);
-            }
-            if !deepen {
-                break;
-            }
-        }
-        self.flush_cache();
-        None
     }
 
     /// Inserts a new key value pair into the tree.
@@ -396,7 +465,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 let min_key = parent_key.clone().min(neighbour.clone());
                 let max_key = parent_key.clone().max(neighbour);
                 (Some(min_key), Some(max_key))
-                // (Some(parent_key.clone().min(neighbour.clone())), Some(parent_key.clone().max(neighbour)))
             }
             None =>
                 match dir {
@@ -405,27 +473,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 }
         };
         self.add_node(Some(parent_key.clone()), &key, value, prev, next);
-    }
-
-    /// Deletes the given key from the tree.
-    /// Returns the value of the deleted key if it existed.
-    /// Usage:
-    /// let tree = AvlTree::new();
-    /// tree.insert(1, 1);
-    /// let value = tree.delete(1);
-    /// assert_eq!(value, Some(1));
-    /// let value = tree.delete(1);
-    /// assert_eq!(value, None);
-    /// let value = tree.get(&1);
-    /// assert_eq!(value, None);
-    pub fn delete(&mut self, key: &K) -> Option<V> {
-        if !self.key_present(key) {
-            return None;
-        }
-        let (start_tuple, shortened) = self.rewire_tree_for_delete(key);
-        self.balance_tree_after_delete(start_tuple, shortened);
-        self.flush_cache();
-        self.store.remove(&key).map(|n| n.value)
     }
 
     /// Balances the tree following a node deletion.
@@ -1056,7 +1103,7 @@ impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K
         } else if self.right_child == Some(old_child.clone()) {
             self.right_child = new_child;
         } else {
-            panic!("Tried to over ride Node but was not a child");
+            panic!("Tried to overwrite node but was not a child");
         }
     }
 
@@ -1153,27 +1200,6 @@ impl Direction {
         }
     }
 
-    /// Determines if the node's key lies within the specified boundary.
-    ///
-    /// - `node`: The key of the node.
-    /// - `bound`: The boundary to check against.
-    fn node_is_inside<K: Ord>(&self, node: &K, bound: Bound<&K>) -> bool {
-        match self {
-            Self::Left =>
-                match bound {
-                    Bound::Unbounded => true,
-                    Bound::Included(other) => node >= other,
-                    Bound::Excluded(other) => node > other,
-                }
-            Self::Right =>
-                match bound {
-                    Bound::Unbounded => true,
-                    Bound::Included(other) => node <= other,
-                    Bound::Excluded(other) => node < other,
-                }
-        }
-    }
-
     /// Returns a numeric representation for the direction.
     /// These are aligned with the balance factor: positive for `Right` and negative for `Left`.
     fn direction_factor(&self) -> i32 {
@@ -1236,11 +1262,11 @@ for NodeIterator<'a, K, V> {
     fn next(&mut self) -> Option<Self::Item> {
         let current_key = self.current.clone()?;
         let node = self.store.get(&current_key).expect("Node not found");
-        let next = node.next(self.direction);
+        let next_key = node.next(self.direction);
         self.current = match
-            next.as_ref().map(|k| self.direction.node_is_inside(k, self.end.as_ref()))
+            next_key.as_ref().map(|k| self.end.as_ref().within_bound(k, self.direction))
         {
-            Some(true) => next,
+            Some(true) => next_key,
             _ => None,
         };
         Some((current_key, node.value.clone()))
@@ -1274,7 +1300,7 @@ impl<
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
             self.current = match
-                next.as_ref().map(|k| self.direction.node_is_inside(k, self.end.as_ref()))
+                next.as_ref().map(|k| self.end.as_ref().within_bound(k, self.direction))
             {
                 Some(true) => next,
                 _ => None,
@@ -1282,6 +1308,33 @@ impl<
             let mut value = node.value.clone();
             function(&key, &mut value);
             node.value = value;
+        }
+    }
+}
+
+trait WithinBound<K> {
+    fn within_bound(&self, key: &K, direction: Direction) -> bool;
+}
+
+impl<K: Ord> WithinBound<K> for Bound<&K> {
+    /// Determines if the key lies within the specified boundary.
+    ///
+    /// - `key`: The key to check against.
+    /// - `direction`: Direction to check the boundary against.
+    fn within_bound(&self, key: &K, direction: Direction) -> bool {
+        match direction {
+            Direction::Left =>
+                match self {
+                    Bound::Unbounded => true,
+                    Bound::Included(other) => key >= other,
+                    Bound::Excluded(other) => key > other,
+                }
+            Direction::Right =>
+                match self {
+                    Bound::Unbounded => true,
+                    Bound::Included(other) => key <= other,
+                    Bound::Excluded(other) => key < other,
+                }
         }
     }
 }
