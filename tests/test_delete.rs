@@ -9,17 +9,17 @@ mod avltree_delete {
 
     #[test]
     fn test_replacement_node_still_in_range() {
-        /// Resulting tree:
-        ///             26
-        ///      18           34
-        /// 14      20      30   38
-        ///           22  28
-        /// After deleting 26:
-        ///            28
-        ///     18           34
-        /// 14     20     30    38
-        ///          22  _
-        /// This test checks whether the replacement node is still in the range after the deletion (the 28)
+        // Resulting tree:
+        //             26
+        //      18           34
+        // 14      20      30   38
+        //           22  28
+        // After deleting 26:
+        //            28
+        //     18           34
+        // 14     20     30    38
+        //          22  _
+        // This test checks whether the replacement node is still in the range after the deletion (the 28)
 
         let mut vec = vec![26, 18, 34, 14, 20, 30, 38, 22, 28];
         let mut helper = TestHelper::new();
@@ -39,11 +39,11 @@ mod avltree_delete {
 
     #[test]
     fn test_delete_root() {
-        /// Resulting tree:
-        /// 1
-        ///
-        /// After deleting 1:
-        /// _
+        // Resulting tree:
+        // 1
+        //
+        // After deleting 1:
+        // _
         let mut helper = TestHelper::new();
         helper.instantiate_default(false);
         helper.insert(1, 1);
@@ -124,14 +124,14 @@ mod avltree_delete {
 
     #[test]
     fn test_shorten_was_calculated_wrong_because_balance_factor_of_delete_was_wrong() {
-        /// Resulting tree:
-        ///       5
-        ///   3       7
-        /// 1   4   8   2
-        /// After deleting 5:
-        ///      4
-        ///    3   7
-        ///  1    8  2
+        // Resulting tree:
+        //       5
+        //   3       7
+        // 1   4   8   2
+        // After deleting 5:
+        //      4
+        //    3   7
+        //  1    8  2
         let vector: Vec<i32> = vec![5, 3, 7, 1, 4, 8, 2];
         let to_delete = vec![5];
         test_range(vector, to_delete);

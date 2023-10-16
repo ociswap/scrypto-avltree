@@ -22,10 +22,10 @@ pub struct TestHelper {
 
 impl TestHelper {
     pub fn new() -> TestHelper {
-        let environment = TestEnvironment::new(vec![("test", &PACKAGE)]);
+        let env = TestEnvironment::new(vec![("test", &PACKAGE)]);
 
         TestHelper {
-            env: environment,
+            env,
             tree_address: None,
         }
     }
