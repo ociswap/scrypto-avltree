@@ -1269,7 +1269,7 @@ impl<
     ///
     /// # Parameters
     /// - `function`: The function to call on each value.
-    pub fn for_each(&mut self, mut function: impl FnMut(&mut V)) {
+    pub fn for_each(&mut self, mut function: impl FnMut(&K, &mut V)) {
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
@@ -1280,7 +1280,7 @@ impl<
                 _ => None,
             };
             let mut value = node.value.clone();
-            function(&mut value);
+            function(&key, &mut value);
             node.value = value;
         }
     }
