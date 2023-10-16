@@ -2,8 +2,7 @@ use std::cmp::Ordering;
 use std::cmp::Ordering::{ Equal, Greater, Less };
 use std::hash::Hash;
 use std::mem;
-use std::ops::{ Bound, Deref, DerefMut, RangeBounds };
-
+use std::ops::{Bound, Deref, DerefMut, RangeBounds};
 use scrypto::prelude::*;
 
 /// A `AvlTree` is a balanced binary tree.
@@ -734,11 +733,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     ///
     /// # Returns
     /// Returns the new balance factor of the node after the rotations.
-    ///
-    /// # Panics
-    /// This function may panic if:
-    /// * The `root` node is not found in the underlying storage. (cannot balance something that is not there)
-    /// * The child node in the `balance_direction` is not found in the underlying storage. (This node should exist because the tree is unbalanced in that direction)
     fn balance(&mut self, root: &K, balance_direction: Direction) -> i32 {
         let child_id = self
             .get_node(root)
@@ -853,7 +847,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         /*
          * imbalance direction = right
          *  Before Balance :
-         *
          *
          *      R
          *    /  \
