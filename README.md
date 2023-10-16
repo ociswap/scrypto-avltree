@@ -29,36 +29,36 @@ let mut tree: AVLTree<Decimal, String> = AVLTree::new();
 ### Insert and get
 Inserting a new key value pair is also straight forward:
 ```rust
-tree.insert(Decimal::from(1), "value");
+tree.insert(dec!(1), "value");
 ```
 If the key is already present in the tree, the value will be overwritten and the old value will be returned.
 ```rust
-let old_value = tree.insert(Decimal::from(1), "new value");
+let old_value = tree.insert(dec!(1), "new value");
 assert_eq!(old_value, Some("value"));
 ```
 
 ### Get and get_mut
 The tree can be queried by key:
 ```rust
-let value = tree.get(&Decimal::from(1));
+let value = tree.get(&dec!(1));
 ```
 Or to get a mutable reference to the value:
 ```rust
-let value = tree.get_mut(&Decimal::from(1));
+let value = tree.get_mut(&dec!(1));
 ```
 ### Range
 To iterate over the tree you can use the `range`, `range_back` methods.
 It accepts a range of keys and returns an iterator over the key value pairs:
 The range is default in rust and can have inclusive or exclusive bounds.
 ```rust
-for value in tree.range(Decimal::from(1)..Decimal::from(10)) {
-    println!("value: {}", value);
+for (key, value) in tree.range(dec!(1)..dec!(10)) {
+    info!("key: {}, value: {}", key, value);
 }
 ```
 gives you all values for the keys between 1 and 10 ascending and excluding 10.
 ```rust
-for value in tree.range_back(Excluded(Decimal::from(1)),Included(Decimal::from(10))) {
-    println!("value: {}", value);
+for (key, value) in tree.range_back(Excluded(dec!(1)), Included(dec!(10))) {
+    info!("key: {}, value: {}", key, value);
 }
 ```
 gives you all values for the keys between 1 and 10 descending and excluding 1.
@@ -67,11 +67,11 @@ gives you all values for the keys between 1 and 10 descending and excluding 1.
 To iterate over the tree and mutate the values you can use the `range_mut`, `range_back_mut` methods.
 It accepts a range of keys and returns an iterator that can be used with the for_each callback
 ```rust
-tree.range_mut(Decimal::from(1)..Decimal::from(10)).for_each(|value| {
+tree.range_mut(dec!(1)..dec!(10)).for_each(|value| {
     *value=String::from("mutated");
 }
-for value in tree.range(Decimal::from(1)..Decimal::from(10)) {
-    println!("value: {}", value);
+for (key, value) in tree.range(dec!(1)..dec!(10)) {
+    info!("key: {}, value: {}", key, value);
 }
 ```
 gives 10 times "mutated" as output.
@@ -80,8 +80,8 @@ Analogue to the `range` method the `range_back_mut` method gives you a descendin
 ### Delete
 To delete a key value pair from the tree you can use the `delete` method:
 ```rust
-let value = tree.delete(&Decimal::from(1));
-print(value);
+let value = tree.delete(&dec!(1));
+info!("{}", value);
 ```
 The method returns the value that was deleted from the tree. 
 None is returned, if the key is not present in the tree.
