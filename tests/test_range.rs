@@ -14,8 +14,9 @@ mod avltree_range {
         helper.instantiate_default(false);
         for i in vector.iter() {
             helper.insert(*i, *i);
+            helper.check_health();
+            helper.execute_expect_success(false);
         }
-        helper.check_health().execute_expect_success(false);
         helper
     }
 
