@@ -22,11 +22,10 @@ impl TestHelperExecution for TestHelper {
 
 impl TestHelper {
     pub fn new() -> TestHelper {
-        // let environment = TestEnvironment::new(&PACKAGE);
         let env = TestEnvironment::new(vec![("test", &PACKAGE)]);
 
         TestHelper {
-            env: env,
+            env,
             tree_address: None,
         }
     }
