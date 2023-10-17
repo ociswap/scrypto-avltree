@@ -1274,6 +1274,11 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
     store: &'a mut KeyValueStore<K, Node<K, V>>,
 }
 
+pub enum IterMutControl {
+    CONTINUE,
+    BREAK,
+}
+
 impl<
     'a,
     K: ScryptoSbor + Clone + Ord + Eq + Display + Debug,
@@ -1288,7 +1293,7 @@ impl<
     ///
     /// # Parameters
     /// - `function`: The function to call on each value.
-    pub fn for_each(&mut self, mut function: impl FnMut(&K, &mut V)) {
+    pub fn for_each(&mut self, mut function: impl FnMut(&K, &mut V)-> IterMutControl) {
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
@@ -1298,9 +1303,11 @@ impl<
                 Some(true) => next,
                 _ => None,
             };
-            let mut value = node.value.clone();
-            function(&key, &mut value);
-            node.value = value;
+            let mut value: V = node.value.clone();
+            match function(&key, &mut value){
+                IterMutControl::CONTINUE => node.value = value,
+                IterMutControl::BREAK => break,
+            }
         }
     }
 }
