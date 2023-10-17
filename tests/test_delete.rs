@@ -8,6 +8,127 @@ mod avltree_delete {
     use helper_avl_tree::*;
 
     #[test]
+    fn remove_last_inserted() {
+        // Tree after inserting 35 without balance:
+        //       74
+        //     5    48
+        //      27    90
+        //       35
+        // Tree after balance of 5:
+        //       74
+        //     27    48
+        //   5   35    90
+        // Tree after insert:
+        //       74
+        //     27    48
+        //   5   35    90
+        //  1 6       82  99
+        // Tree after deletion of last inserted node:
+        //       74
+        //     27    48
+        //   5   35    90
+        //  1         82 99
+        let vector = vec![74, 5, 48, 27, 90, 35, 82, 99, 1, 6];
+        let to_delete = vec![6];
+        test_range(vector, to_delete);
+    }
+
+    #[test]
+    fn replace_2_layers_above() {
+        // rewiring of node in the middle could go wrong because it has to be in memory.
+        // Tree after inserting:
+        //       18
+        //  15       21
+        // 12 16    20
+        // Tree after deleting 18
+        //       20
+        //  15       21
+        // 12 16
+        let vector: Vec<i32> = vec![18, 15, 21, 12, 16, 20];
+        let to_delete = vec![18];
+        test_range(vector, to_delete);
+    }
+
+    #[test]
+    fn test_deleting_of_leaf_node_has_no_effect() {
+        // rewiring of node in the middle could go wrong because it has no children
+        // Tree after inserting:
+        //       18
+        //  15       21
+        // 12 16    20
+        // Tree after deleting 16
+        //       18
+        //  15       21
+        // 12          20
+        let vector: Vec<i32> = vec![18, 15, 21, 12, 16, 20];
+        let to_delete = vec![16];
+        test_range(vector, to_delete);
+    }
+
+    #[test]
+    fn test_replace_with_left_child_same_direction() {
+        // was wrong wired in the leftover child of right child in this case the 76 had the wrong parent
+        // Tree after inserting:
+        //       74
+        //  73       75
+        // 71
+        // Tree after deleting 74
+        //       73
+        //  71       75
+        let vector = vec![74, 73, 75, 71];
+        let to_delete = vec![74];
+        test_range(vector, to_delete);
+    }
+
+    #[test]
+    fn test_replace_with_right_child_same_direction() {
+        // was wrong wired in the leftover child of right child in this case the 76 had the wrong parent
+        // Tree after inserting:
+        //       74
+        //  73       75
+        //         76
+        // Tree after deleting 74
+        //       75
+        //  73       76
+
+        let vector = vec![74, 73, 75, 76];
+        let to_delete = vec![74];
+        test_range(vector, to_delete);
+    }
+
+    #[test]
+    fn test_replace_with_right_childdifferent_direction() {
+        // was wrong wired in the leftover child of right child in this case the 76 had the wrong parent
+        // Tree after inserting:
+        //       74
+        //  73       76
+        //         75
+        // Tree after deleting 74
+        //       75
+        //  73       76
+        let vector = vec![74, 73, 76, 75];
+        let to_delete = vec![74];
+        test_range(vector, to_delete);
+    }
+
+    #[test]
+    fn test_replace_has_children() {
+        // Tree after inserting:
+        //         48
+        //     27       81
+        // 13   40    72
+        //     35
+        // Tree after deleting 48
+        //         40
+        //     27       81
+        // 13   35    72
+        // Orphant 35 has to find a new place at the position of 40
+        let vector = vec![48, 27, 81, 13, 40, 72, 35];
+        let to_delete = vec![48];
+        test_range(vector, to_delete);
+    }
+
+    #[test]
     fn test_replacement_node_still_in_range() {
         // Resulting tree:
         //             26
@@ -321,4 +442,20 @@ mod avltree_delete {
         let to_delete = vec![3];
         test_range(vector, to_delete);
     }
+
+    #[test]
+    fn test_replace_with_left_child_different_direction() {
+        // was wrong wired in the leftover child of right child in this case the 76 had the wrong parent
+        // Tree after inserting:
+        //       74
+        //  72       75
+        //    73
+        // Tree after deleting 74
+        //       73
+        //  72       75
+        let vector = vec![74, 72, 75, 73];
+        let to_delete = vec![74];
+        test_range(vector, to_delete);
+    }
+
 }
