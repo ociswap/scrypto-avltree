@@ -1275,8 +1275,8 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
 }
 
 pub enum IterMutControl {
-    CONTINUE,
-    BREAK,
+    Continue,
+    Break,
 }
 
 impl<
@@ -1305,8 +1305,8 @@ impl<
             };
             let mut value: V = node.value.clone();
             match function(&key, &mut value){
-                IterMutControl::CONTINUE => node.value = value,
-                IterMutControl::BREAK => break,
+                IterMutControl::Continue => node.value = value,
+                IterMutControl::Break => break,
             }
         }
     }

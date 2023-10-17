@@ -85,14 +85,26 @@ mod avl_test_wrapper {
         pub fn update_values(&mut self, start_key: i32, end_key: i32, new_value: i32) {
             self.avl_tree.range_mut(start_key..end_key).for_each(|_, value| {
                 *value = new_value;
-                return IterMutControl::CONTINUE;
+                return IterMutControl::Continue;
             });
         }
 
         pub fn update_values_back(&mut self, start_key: i32, end_key: i32, new_value: i32) {
             self.avl_tree.range_back_mut(start_key..end_key).for_each(|_, value| {
                 *value = new_value;
-                return IterMutControl::CONTINUE;
+                return IterMutControl::Continue;
+            });
+        }
+        pub fn update_values_max_iters(&mut self, start_key: i32, end_key: i32, max_iters:i32, new_value: i32) {
+            let mut count = 0;
+            self.avl_tree.range_mut(start_key..end_key).for_each(|_, value| {
+                *value = new_value;
+                return if count < max_iters {
+                    count += 1;
+                    IterMutControl::Continue
+                } else {
+                    IterMutControl::Break
+                }
             });
         }
 

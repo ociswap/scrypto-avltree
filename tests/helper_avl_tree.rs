@@ -107,6 +107,16 @@ impl TestHelper {
         self
     }
 
+    pub fn update_values_max_iters(&mut self, start_key: i32, end_key: i32, max_iters: i32, value: i32) -> &mut TestHelper {
+        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        self.env.manifest_builder = manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "update_values_max_iters",
+            manifest_args!(start_key, end_key, max_iters, value)
+        );
+        self.env.new_instruction("update_values_max_iters", 1, 0);
+        self
+    }
     pub fn update_values(&mut self, start_key: i32, end_key: i32, value: i32) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(

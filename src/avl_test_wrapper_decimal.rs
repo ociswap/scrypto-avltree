@@ -2,6 +2,7 @@ use scrypto::prelude::*;
 use std::ops::Bound::{ Excluded, Included };
 
 use crate::avl_tree::AvlTree;
+use crate::avl_tree::IterMutControl;
 use crate::avl_tree_health::{ check_health, print_tree_nice };
 
 #[blueprint]
@@ -100,6 +101,7 @@ mod avl_test_wrapper_decimal {
         pub fn update_values(&mut self, start_key: Decimal, end_key: Decimal, new_value: Decimal) {
             self.avl_tree.range_mut(start_key..end_key).for_each(|_, value| {
                 *value = new_value.clone();
+                return IterMutControl::Continue;
             });
         }
 
@@ -111,6 +113,7 @@ mod avl_test_wrapper_decimal {
         ) {
             self.avl_tree.range_back_mut(start_key..end_key).for_each(|_, value| {
                 *value = new_value.clone();
+                return IterMutControl::Continue;
             });
         }
 

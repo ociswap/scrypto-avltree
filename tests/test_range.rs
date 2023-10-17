@@ -52,9 +52,9 @@ mod avltree_range {
                 (42, 42),
                 (43, 43),
                 (53, 53),
-                (54, 54)
+                (54, 54),
             ],
-            true
+            true,
         );
     }
 
@@ -78,9 +78,9 @@ mod avltree_range {
                 (14, 14),
                 (13, 13),
                 (12, 12),
-                (11, 11)
+                (11, 11),
             ],
-            true
+            true,
         );
     }
 
@@ -101,9 +101,9 @@ mod avltree_range {
                 (18, 18),
                 (17, 17),
                 (16, 16),
-                (15, 15)
+                (15, 15),
             ],
-            true
+            true,
         );
 
         let receipt = helper.get_range_back_both_included(15, 25).execute_expect_success(true);
@@ -122,7 +122,7 @@ mod avltree_range {
                     (18, 18),
                     (17, 17),
                     (16, 16),
-                    (15, 15)
+                    (15, 15),
                 ]
             ]
         );
@@ -141,7 +141,7 @@ mod avltree_range {
                     (19, 19),
                     (18, 18),
                     (17, 17),
-                    (16, 16)
+                    (16, 16),
                 ]
             ]
         );
@@ -166,7 +166,7 @@ mod avltree_range {
                     (21, 21),
                     (22, 22),
                     (23, 23),
-                    (24, 24)
+                    (24, 24),
                 ]
             ]
         );
@@ -187,7 +187,7 @@ mod avltree_range {
                     (22, 22),
                     (23, 23),
                     (24, 24),
-                    (25, 25)
+                    (25, 25),
                 ]
             ]
         );
@@ -206,7 +206,7 @@ mod avltree_range {
                     (21, 21),
                     (22, 22),
                     (23, 23),
-                    (24, 24)
+                    (24, 24),
                 ]
             ]
         );
@@ -217,17 +217,36 @@ mod avltree_range {
         let mut helper = helper_with_initial_data((10..30).collect());
         helper.update_values(15, 25, -1).execute_expect_success(true);
         helper.get_range_success(15, 25, vec![
-                    (15, -1),
-                    (16, -1),
-                    (17, -1),
-                    (18, -1),
-                    (19, -1),
-                    (20, -1),
-                    (21, -1),
-                    (22, -1),
-                    (23, -1),
-                    (24, -1)
-                ], true);
+            (15, -1),
+            (16, -1),
+            (17, -1),
+            (18, -1),
+            (19, -1),
+            (20, -1),
+            (21, -1),
+            (22, -1),
+            (23, -1),
+            (24, -1),
+        ], true);
+        helper.get_range_success(25, 30, vec![(25, 25), (26, 26), (27, 27), (28, 28), (29, 29)], true);
+    }
+
+    #[test]
+    fn test_range_after_mutating_with_max_iters() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+        helper.update_values_max_iters(15, 25, 5, -1).execute_expect_success(true);
+        helper.get_range_success(15, 25, vec![
+            (15, -1),
+            (16, -1),
+            (17, -1),
+            (18, -1),
+            (19, -1),
+            (20, 20),
+            (21, 21),
+            (22, 22),
+            (23, 23),
+            (24, 24),
+        ], true);
         helper.get_range_success(25, 30, vec![(25, 25), (26, 26), (27, 27), (28, 28), (29, 29)], true);
     }
 }
