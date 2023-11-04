@@ -5,3 +5,4 @@ pub use avl_tree::AvlTree;
 mod avl_test_wrapper;
 mod avl_tree_health;
 mod avl_test_wrapper_decimal;
+mod avl_test_wrapper_u16;

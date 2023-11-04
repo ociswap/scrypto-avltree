@@ -78,30 +78,41 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// assert_eq!(*value, 2);
     /// ```
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        if let Some(mut existing_node) = self.store.get_mut(&key) {
-            return Some(mem::replace(&mut existing_node.value, value));
-        }
-        let mut parent = self.insert_node_in_empty_spot(&key, value);
-        let mut deepen = true;
-        while deepen && parent.is_some() {
-            let (node, insert_direction) = parent.unwrap();
-            let cached_node = self.get_mut_node(&node).expect("Parent of insert should exist");
-            parent = cached_node.parent
-                .clone()
-                .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
-            if deepen {
-                deepen = cached_node.balance_factor == 0;
-                cached_node.balance_factor += insert_direction.direction_factor();
-            }
-            if cached_node.balance_factor.abs() == 2 {
-                self.balance(&node, insert_direction);
-            }
-            if !deepen {
-                break;
-            }
-        }
-        self.flush_cache();
-        None
+        self.store.insert(key.clone(), Node{
+            key: key.clone(),
+            value,
+            left_child: Some(key.clone()),
+            right_child: Some(key.clone()),
+            parent: Some(key.clone()),
+            next: Some(key.clone()),
+            balance_factor: 0,
+            prev: Some(key.clone()),
+        });
+        return None;
+        // if let Some(mut existing_node) = self.store.get_mut(&key) {
+        //     return Some(mem::replace(&mut existing_node.value, value));
+        // }
+        // let mut parent = self.insert_node_in_empty_spot(&key, value);
+        // let mut deepen = true;
+        // while deepen && parent.is_some() {
+        //     let (node, insert_direction) = parent.unwrap();
+        //     let cached_node = self.get_mut_node(&node).expect("Parent of insert should exist");
+        //     parent = cached_node.parent
+        //         .clone()
+        //         .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
+        //     if deepen {
+        //         deepen = cached_node.balance_factor == 0;
+        //         cached_node.balance_factor += insert_direction.direction_factor();
+        //     }
+        //     if cached_node.balance_factor.abs() == 2 {
+        //         self.balance(&node, insert_direction);
+        //     }
+        //     if !deepen {
+        //         break;
+        //     }
+        // }
+        // self.flush_cache();
+        // None
     }
 
     /// Deletes the given key from the tree.

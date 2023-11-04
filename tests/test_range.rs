@@ -10,8 +10,6 @@ mod avltree_range {
     fn helper_with_initial_data(vector: Vec<i32>) -> TestHelper {
         let mut helper = TestHelper::new();
         helper.instantiate_default(false);
-        let mut helper = TestHelper::new();
-        helper.instantiate_default(false);
         for i in vector.iter() {
             helper.insert(*i, *i);
             helper.check_health();
