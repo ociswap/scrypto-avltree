@@ -19,14 +19,14 @@ Checkout the example folder, that provides some basic usage examples.
 Add avl tree to your toml config:
 ```toml
 [dependencies]
-avl_tree = { git = "https://github.com/ociswap/scrypto-avltree", version = "0.1.0" }
+scrypto_avltree = { git = "https://github.com/ociswap/scrypto-avltree", version = "0.1.0" }
 ```
 
 ### Instantiation 
 Instantiation is rather simple:
 ```rust
 use scrypto::prelude::*;
-use avl_tree::AvlTree;
+use scrypto_avltree::AvlTree;
 let mut tree: AvlTree<Decimal, String> = AvlTree::new();
 ```
 

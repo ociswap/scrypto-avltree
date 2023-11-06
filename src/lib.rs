@@ -1,5 +1,5 @@
 pub mod avl_tree;
-pub use avl_tree::AvlTree;
+pub use avl_tree::*;
 
 // helper modules and blueprints for testing
 mod avl_test_wrapper;
