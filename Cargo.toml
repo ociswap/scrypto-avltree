@@ -2,6 +2,9 @@
 name = "scrypto_avltree"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "AvlTree implementation in Scrypto with KVStore"
+repository = "https://github.com/ociswap/scrypto-avltree"
 
 [dependencies]
 sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
