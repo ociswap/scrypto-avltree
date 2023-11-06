@@ -126,8 +126,8 @@ mod avl_test_wrapper_decimal {
             self.avl_tree.get(&key).map(|x| x.clone())
         }
 
-        pub fn delete(&mut self, key: Decimal) -> Option<Decimal> {
-            self.avl_tree.delete(&key)
+        pub fn remove(&mut self, key: Decimal) -> Option<Decimal> {
+            self.avl_tree.remove(&key)
         }
     }
 }

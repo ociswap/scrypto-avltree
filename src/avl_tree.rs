@@ -109,14 +109,14 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// let tree = AvlTree::new();
     /// tree.insert(1, 1);
-    /// let value = tree.delete(1);
+    /// let value = tree.remove(1);
     /// assert_eq!(value, Some(1));
-    /// let value = tree.delete(1);
+    /// let value = tree.remove(1);
     /// assert_eq!(value, None);
     /// let value = tree.get(&1);
     /// assert_eq!(value, None);
     /// ```
-    pub fn delete(&mut self, key: &K) -> Option<V> {
+    pub fn remove(&mut self, key: &K) -> Option<V> {
         if !self.contains_key(key) {
             return None;
         }

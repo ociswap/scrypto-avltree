@@ -117,8 +117,8 @@ mod avl_test_wrapper {
             self.avl_tree.get(&key).map(|x| *x)
         }
 
-        pub fn delete(&mut self, key: i32) -> Option<i32> {
-            self.avl_tree.delete(&key)
+        pub fn remove(&mut self, key: i32) -> Option<i32> {
+            self.avl_tree.remove(&key)
         }
     }
 }

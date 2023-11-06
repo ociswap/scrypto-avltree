@@ -65,14 +65,14 @@ impl TestHelper {
         self
     }
 
-    pub fn delete(&mut self, key: Decimal) {
+    pub fn remove(&mut self, key: Decimal) {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
             self.tree_address.unwrap(),
-            "delete",
+            "remove",
             manifest_args!(key)
         );
-        self.env.new_instruction("delete", 1, 0);
+        self.env.new_instruction("remove", 1, 0);
     }
 
     pub fn check_health(&mut self) -> &mut TestHelper {
@@ -136,7 +136,7 @@ pub fn test_range(mut vector: Vec<Decimal>, to_delete: Vec<Decimal>) {
     helper.get_range_success(Decimal::MIN, Decimal::MAX, key_values.clone(), true);
 
     for i in to_delete.iter().rev() {
-        helper.delete(*i);
+        helper.remove(*i);
         helper.check_health();
         // helper.print();
         helper.execute_expect_success(true);
