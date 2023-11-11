@@ -1,9 +1,9 @@
 use scrypto::prelude::*;
-use std::ops::Bound::{ Excluded, Included };
+use std::ops::Bound::{Excluded, Included};
 
 use crate::avl_tree::AvlTree;
 use crate::avl_tree::IterMutControl;
-use crate::avl_tree_health::{ check_health, print_tree_nice };
+use crate::avl_tree_health::{check_health, print_tree_nice};
 
 #[blueprint]
 mod avl_test_wrapper {
@@ -83,28 +83,28 @@ mod avl_test_wrapper {
         }
 
         pub fn update_values(&mut self, start_key: i32, end_key: i32, new_value: i32) {
-            self.avl_tree.range_mut(start_key..end_key).for_each(|_, value| {
+            self.avl_tree.range_mut(start_key..end_key).for_each(|_, value, _| {
                 *value = new_value;
                 return IterMutControl::Continue;
             });
         }
 
         pub fn update_values_back(&mut self, start_key: i32, end_key: i32, new_value: i32) {
-            self.avl_tree.range_back_mut(start_key..end_key).for_each(|_, value| {
+            self.avl_tree.range_back_mut(start_key..end_key).for_each(|_, value, _| {
                 *value = new_value;
                 return IterMutControl::Continue;
             });
         }
-        pub fn update_values_max_iters(&mut self, start_key: i32, end_key: i32, max_iters:i32, new_value: i32) {
+        pub fn update_values_max_iters(&mut self, start_key: i32, end_key: i32, max_iters: i32, new_value: i32) {
             let mut count = 0;
-            self.avl_tree.range_mut(start_key..end_key).for_each(|_, value| {
+            self.avl_tree.range_mut(start_key..end_key).for_each(|_, value, _| {
                 *value = new_value;
                 return if count < max_iters {
                     count += 1;
                     IterMutControl::Continue
                 } else {
                     IterMutControl::Break
-                }
+                };
             });
         }
 

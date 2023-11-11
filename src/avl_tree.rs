@@ -1026,42 +1026,6 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 }
 
-pub struct ItemRef<'a, K: ScryptoSbor, V: ScryptoSbor> {
-    item: KeyValueEntryRef<'a, Node<K, V>>,
-}
-
-impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRef<'a, K, V> {
-    type Target = V;
-
-    fn deref(&self) -> &Self::Target {
-        &self.item.value
-    }
-}
-
-pub struct ItemRefMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
-    item: KeyValueEntryRefMut<'a, Node<K, V>>,
-}
-
-impl<K: ScryptoSbor, V: ScryptoSbor + Clone> ItemRefMut<'_, K, V> {
-    pub fn get_value(&self) -> V {
-        self.item.value.clone()
-    }
-}
-
-impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRefMut<'a, K, V> {
-    type Target = V;
-
-    fn deref(&self) -> &Self::Target {
-        &self.item.value
-    }
-}
-
-impl<'a, K: ScryptoSbor, V: ScryptoSbor> DerefMut for ItemRefMut<'a, K, V> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.item.value
-    }
-}
-
 #[derive(ScryptoSbor, Clone)]
 pub(crate) struct Node<K: ScryptoSbor, V: ScryptoSbor> {
     /// Unique key for this node
@@ -1184,6 +1148,61 @@ impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K
     }
 }
 
+
+pub struct ItemRef<'a, K: ScryptoSbor, V: ScryptoSbor> {
+    item: KeyValueEntryRef<'a, Node<K, V>>,
+}
+
+impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRef<'a, K, V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.item.value
+    }
+}
+
+impl<K: ScryptoSbor, V: ScryptoSbor> ItemRef<'_, K, V> {
+    pub fn has_next(&self) -> bool {
+        self.item.next.is_some()
+    }
+    pub fn has_pref(&self) -> bool {
+        self.item.prev.is_some()
+    }
+}
+
+pub struct ItemRefMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
+    item: KeyValueEntryRefMut<'a, Node<K, V>>,
+}
+
+impl<K: ScryptoSbor, V: ScryptoSbor> ItemRefMut<'_, K, V> {
+    pub fn has_next(&self) -> bool {
+        self.item.next.is_some()
+    }
+    pub fn has_pref(&self) -> bool {
+        self.item.prev.is_some()
+    }
+}
+
+impl<K: ScryptoSbor, V: ScryptoSbor + Clone> ItemRefMut<'_, K, V> {
+    pub fn get_value(&self) -> V {
+        self.item.value.clone()
+    }
+}
+
+impl<'a, K: ScryptoSbor, V: ScryptoSbor> Deref for ItemRefMut<'a, K, V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.item.value
+    }
+}
+
+impl<'a, K: ScryptoSbor, V: ScryptoSbor> DerefMut for ItemRefMut<'a, K, V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.item.value
+    }
+}
+
 /// Represents a direction, either `Left` or `Right`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Direction {
@@ -1227,6 +1246,7 @@ impl Direction {
     }
 }
 
+
 /// `NodeIterator` iterates over nodes in a doubly-linked list structure,
 /// represented by the `next` and `prev` pointers, which are stored in
 /// a key-value store. The nodes are traversed in a specific direction
@@ -1246,6 +1266,15 @@ pub struct NodeIterator<'a, K: ScryptoSbor, V: ScryptoSbor> {
     direction: Direction,
     end: Bound<K>,
     store: &'a KeyValueStore<K, Node<K, V>>,
+}
+
+impl<K: ScryptoSbor + Clone, V: ScryptoSbor> NodeIterator<'_, K, V> {
+    pub fn has_next(&self) -> bool {
+        self.current.is_some()
+    }
+    pub fn next_key(&self) -> Option<K> {
+        self.current.clone()
+    }
 }
 
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + Clone> Iterator
@@ -1299,7 +1328,7 @@ impl<
     ///
     /// # Parameters
     /// - `function`: The function to call on each value.
-    pub fn for_each(&mut self, mut function: impl FnMut(&K, &mut V) -> IterMutControl) {
+    pub fn for_each(&mut self, mut function: impl FnMut(&K, &mut V, Option<K>) -> IterMutControl) {
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
@@ -1310,7 +1339,7 @@ impl<
                 _ => None,
             };
             let mut value: V = node.value.clone();
-            match function(&key, &mut value) {
+            match function(&key, &mut value, self.current.clone()) {
                 IterMutControl::Continue => node.value = value,
                 IterMutControl::Break => break,
             }
