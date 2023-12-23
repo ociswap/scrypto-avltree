@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::hash::Hash;
 use std::mem;
-use std::ops::{Bound, Deref, DerefMut, RangeBounds};
+use std::ops::{Bound, RangeBounds};
 
 /// An `AvlTree` is a balanced binary tree.
 /// It is implemented as a double linked list with a binary tree on top.
@@ -77,7 +77,7 @@ impl<K: Clone + Display + Eq + Ord + Hash + Debug + ScryptoSbor, V: ScryptoSbor 
     /// assert_eq!(*value, 2);
     /// ```
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        if let Some(mut existing_node) = self.store.get_mut(&key) {
+        if let Some(existing_node) = self.store.get_mut(&key) {
             return Some(mem::replace(&mut existing_node.value, value));
         }
         let mut parent = self.insert_node_in_empty_spot(&key, value);
@@ -293,7 +293,7 @@ impl<K: Clone + Display + Eq + Ord + Hash + Debug + ScryptoSbor, V: ScryptoSbor 
     /// empties the cache and writes back the changes to the radix KV store.
     fn flush_cache(&mut self) {
         for (key, value) in self.store_cache.iter() {
-            let mut data = self.store.get_mut(key).expect("Node not found");
+            let data = self.store.get_mut(key).expect("Node not found");
             data.left_child = value.left_child.clone();
             data.right_child = value.right_child.clone();
             data.parent = value.parent.clone();
@@ -1315,7 +1315,7 @@ impl<'a, K: Clone + Hash + Ord + Eq + Display + Debug, V: Clone> NodeIteratorMut
     /// - `function`: The function to call on each value.
     pub fn for_each(&mut self, mut function: impl FnMut(&K, &mut V, Option<K>) -> IterMutControl) {
         while let Some(key) = self.current.clone() {
-            let mut node = self.store.get_mut(&key).expect("Node not found");
+            let node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
             self.current = match next
                 .as_ref()
