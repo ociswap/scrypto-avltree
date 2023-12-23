@@ -1,21 +1,18 @@
 [package]
 name = "scrypto_avltree"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 license = "MIT"
 description = "AvlTree implementation in Scrypto with KVStore"
 repository = "https://github.com/ociswap/scrypto-avltree"
 
 [dependencies]
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
+sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
+scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
 
 [dev-dependencies]
-transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
-radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
-scrypto_testenv = { git = "https://github.com/ociswap/scrypto-testenv", branch = "main", version = "0.5.2" }
-pretty_assertions = "1.3.0"
-lazy_static = "1.4.0"
+transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
+radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
 
 [profile.dev]
 opt-level = 'z'        # Optimize for size.
