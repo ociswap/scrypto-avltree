@@ -182,14 +182,14 @@ pub fn print_tree_nice<
 
     debug!("Tree:");
     debug!("Vertical node arangement: Node, Value Balance factor, Parent, prev, next");
-    let print_string = "\n".to_string()
+    debug!("{}","\n".to_string()
         + layers_string
             .iter()
             .map(|s| s.as_str())
             .rev()
             .collect::<Vec<_>>()
             .join("\n")
-            .as_str();
-    debug!("{}", print_string);
+            .as_str()
+    );
     debug!("depth: {}", max_depth);
 }
