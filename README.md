@@ -93,3 +93,4 @@ None is returned, if the key is not present in the tree.
 
 # Contribute
 The AVL tree itself is implemented in `avl_tree.rs`. The other modules and files contain helpers for testing.
+```rustup target add wasm32-unknown-unknown```

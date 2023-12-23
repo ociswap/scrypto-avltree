@@ -2,10 +2,10 @@ mod helper_avl_tree;
 
 #[cfg(test)]
 mod avltree_insert {
-    use scrypto::prelude::*;
-    use scrypto_testenv::TestHelperExecution;
     use super::*;
     use helper_avl_tree::*;
+    use scrypto::prelude::*;
+    use scrypto_testenv::TestHelperExecution;
 
     #[test]
     fn test_same_side_balance_left() {
@@ -151,5 +151,4 @@ mod avltree_insert {
             .collect();
         helper.get_range_success(i32::MIN, i32::MAX, output_expected, true);
     }
-
 }

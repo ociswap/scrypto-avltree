@@ -2,10 +2,10 @@ mod helper_avl_tree;
 
 #[cfg(test)]
 mod avltree_delete {
-    use scrypto::prelude::*;
-    use scrypto_testenv::TestHelperExecution;
     use super::*;
     use helper_avl_tree::*;
+    use scrypto::prelude::*;
+    use scrypto_testenv::TestHelperExecution;
 
     #[test]
     fn remove_last_inserted() {
@@ -195,7 +195,11 @@ mod avltree_delete {
         let delete_output = delete_output[0].clone();
         let get_output: Vec<Option<i32>> = recipt.outputs("get");
         let get_output = get_output[0].clone();
-        assert_eq!(delete_output, Some(400), "One was deleted from tree and returned");
+        assert_eq!(
+            delete_output,
+            Some(400),
+            "One was deleted from tree and returned"
+        );
         assert_eq!(get_output, None, "One was deleted from tree");
         helper.remove(1);
         helper.check_health();
@@ -203,8 +207,7 @@ mod avltree_delete {
         let delete_output: Vec<Option<i32>> = recipt.outputs("remove");
         let delete_output = delete_output[0].clone();
         assert_eq!(
-            delete_output,
-            None,
+            delete_output, None,
             "remove did not return None after deleting non existent element"
         );
     }
@@ -399,7 +402,9 @@ mod avltree_delete {
         //          30          38            43     46
         //     25       33    36   39           44     47
         //  20    26     31     37                       48
-        let vector = vec![35, 25, 40, 20, 30, 38, 45, 10, 26, 33, 36, 39, 43, 46, 31, 37, 44, 47, 48];
+        let vector = vec![
+            35, 25, 40, 20, 30, 38, 45, 10, 26, 33, 36, 39, 43, 46, 31, 37, 44, 47, 48,
+        ];
         let to_delete = vec![25];
         test_range(vector, to_delete);
     }
@@ -457,5 +462,4 @@ mod avltree_delete {
         let to_delete = vec![74];
         test_range(vector, to_delete);
     }
-
 }
