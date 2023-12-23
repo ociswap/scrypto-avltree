@@ -6,23 +6,32 @@ use scrypto::prelude::*;
 use crate::avl_tree::AvlTree;
 
 // Debugging functions
-pub fn check_health<K: ScryptoSbor + Hash + Ord + Clone + Debug + Display, V: Clone + ScryptoSbor>(
-    tree: &mut AvlTree<K, V>
+pub fn check_health<
+    K: ScryptoSbor + Hash + Ord + Clone + Debug + Display,
+    V: Clone + ScryptoSbor,
+>(
+    tree: &mut AvlTree<K, V>,
 ) {
     let root = tree.root.clone();
     check_health_recursive(tree, root.as_ref(), true);
 }
 
-fn check_health_recursive<K: Clone + ScryptoSbor + Hash + Ord + Debug + Display, V: Clone + ScryptoSbor>(
+fn check_health_recursive<
+    K: Clone + ScryptoSbor + Hash + Ord + Debug + Display,
+    V: Clone + ScryptoSbor,
+>(
     tree: &mut AvlTree<K, V>,
     key: Option<&K>,
-    panic: bool
+    panic: bool,
 ) -> (i32, Option<K>) {
     if key.is_none() {
         return (0, None);
     }
     let key = key.unwrap();
-    let node = tree.get_node(&key).cloned().expect("Node of subtree should exist.");
+    let node = tree
+        .get_node(&key)
+        .cloned()
+        .expect("Node of subtree should exist.");
     let left = node.left_child.as_ref();
     let right = node.right_child.as_ref();
     let (height_left, parent_left) = check_health_recursive(tree, left, panic);
@@ -44,16 +53,12 @@ fn check_health_recursive<K: Clone + ScryptoSbor + Hash + Ord + Debug + Display,
         if panic {
             panic!(
                 "Balance factor of node {} is not correct. Should be {} but is {}",
-                node.key,
-                balance_factor,
-                node.balance_factor
+                node.key, balance_factor, node.balance_factor
             );
         } else {
             debug!(
                 "Balance factor of node {} is not correct. Should be {} but is {}",
-                node.key,
-                balance_factor,
-                node.balance_factor
+                node.key, balance_factor, node.balance_factor
             );
         }
     }
@@ -69,8 +74,11 @@ fn check_health_recursive<K: Clone + ScryptoSbor + Hash + Ord + Debug + Display,
 
 pub fn print_tree_nice<
     K: ScryptoSbor + Debug + Display + Hash + Ord + Clone,
-    V: ScryptoSbor + Clone
->(tree: &mut AvlTree<K, V>, place_holder: K) {
+    V: ScryptoSbor + Clone,
+>(
+    tree: &mut AvlTree<K, V>,
+    place_holder: K,
+) {
     // Works best if keys are between 10 and 99 because of formatting.
     let mut levels: HashMap<i32, HashMap<i32, K>> = HashMap::new();
     let mut queue: VecDeque<(K, i32, i32)> = VecDeque::new();
@@ -126,15 +134,27 @@ pub fn print_tree_nice<
                     _ => "??",
                 };
                 balance_factors.push(format!("{}", balance_factor));
-                parents.push(
-                    format!("{}", node.parent.clone().unwrap_or(place_holder.clone()).to_string())
-                );
-                nexts.push(
-                    format!("{}", node.next.clone().unwrap_or(place_holder.clone()).to_string())
-                );
-                prevs.push(
-                    format!("{}", node.prev.clone().unwrap_or(place_holder.clone()).to_string())
-                );
+                parents.push(format!(
+                    "{}",
+                    node.parent
+                        .clone()
+                        .unwrap_or(place_holder.clone())
+                        .to_string()
+                ));
+                nexts.push(format!(
+                    "{}",
+                    node.next
+                        .clone()
+                        .unwrap_or(place_holder.clone())
+                        .to_string()
+                ));
+                prevs.push(format!(
+                    "{}",
+                    node.prev
+                        .clone()
+                        .unwrap_or(place_holder.clone())
+                        .to_string()
+                ));
             } else {
                 node_keys.push("--".to_string());
                 parents.push("--".to_string());
@@ -151,12 +171,10 @@ pub fn print_tree_nice<
         layers_string.push(spacing_front.clone() + nexts.join(spacing.clone().as_str()).as_str());
         layers_string.push(spacing_front.clone() + prevs.join(spacing.clone().as_str()).as_str());
         layers_string.push(spacing_front.clone() + parents.join(spacing.clone().as_str()).as_str());
-        layers_string.push(
-            spacing_front.clone() + balance_factors.join(spacing.clone().as_str()).as_str()
-        );
-        layers_string.push(
-            spacing_front.clone() + node_keys.join(spacing.clone().as_str()).as_str()
-        );
+        layers_string
+            .push(spacing_front.clone() + balance_factors.join(spacing.clone().as_str()).as_str());
+        layers_string
+            .push(spacing_front.clone() + node_keys.join(spacing.clone().as_str()).as_str());
         layers_string.push("".to_string());
         half_spacing = spacing.clone();
         spacing = spacing.clone() + spacing.clone().as_str() + "  ";
@@ -164,9 +182,8 @@ pub fn print_tree_nice<
 
     debug!("Tree:");
     debug!("Vertical node arangement: Node, Value Balance factor, Parent, prev, next");
-    let print_string =
-        "\n".to_string() +
-        layers_string
+    let print_string = "\n".to_string()
+        + layers_string
             .iter()
             .map(|s| s.as_str())
             .rev()

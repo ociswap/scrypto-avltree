@@ -1,9 +1,9 @@
+use scrypto::prelude::*;
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::hash::Hash;
 use std::mem;
 use std::ops::{Bound, Deref, DerefMut, RangeBounds};
-use scrypto::prelude::*;
 
 /// An `AvlTree` is a balanced binary tree.
 /// It is implemented as a double linked list with a binary tree on top.
@@ -23,10 +23,9 @@ pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
     store_cache: HashMap<K, Node<K, ()>>,
 }
 
-impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor + Clone> AvlTree<
-    K,
-    V
-> {
+impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor + Clone>
+    AvlTree<K, V>
+{
     /// Creates an empty `AvlTree`.
     pub fn new() -> Self {
         AvlTree {
@@ -85,8 +84,11 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         let mut deepen = true;
         while deepen && parent.is_some() {
             let (node, insert_direction) = parent.unwrap();
-            let cached_node = self.get_mut_node(&node).expect("Parent of insert should exist");
-            parent = cached_node.parent
+            let cached_node = self
+                .get_mut_node(&node)
+                .expect("Parent of insert should exist");
+            parent = cached_node
+                .parent
                 .clone()
                 .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
             if deepen {
@@ -154,7 +156,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
     /// ```
-    pub fn range<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
+    pub fn range<R>(&self, range: R) -> NodeIterator<K, V>
+    where
+        R: RangeBounds<K>,
+    {
         return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
 
@@ -187,7 +192,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// 20, 19, 18, 17, 16, 15, 14, 13, 12, 11
     /// ```
-    pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V> where R: RangeBounds<K> {
+    pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V>
+    where
+        R: RangeBounds<K>,
+    {
         return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
 
@@ -210,7 +218,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
     /// ```
     pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V>
-        where R: RangeBounds<K> + Debug
+    where
+        R: RangeBounds<K> + Debug,
     {
         return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
@@ -232,7 +241,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 3, 2, 1, 0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
     /// ```
-    pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V> where R: RangeBounds<K> {
+    pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V>
+    where
+        R: RangeBounds<K>,
+    {
         return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
 
@@ -253,9 +265,13 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
 
     /// Caches the node information from the radix KV store.
     fn cache_if_missing(&mut self, key: &K) {
-        if !self.store_cache.contains_key(&key) {
-            self.store.get(&key).map(|data| {
-                self.store_cache.insert(key.clone(), Node {
+        if self.store_cache.contains_key(&key) {
+            return;
+        }
+        self.store.get(&key).map(|data| {
+            self.store_cache.insert(
+                key.clone(),
+                Node {
                     key: data.key.clone(),
                     value: (),
                     left_child: data.left_child.clone(),
@@ -264,9 +280,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                     prev: data.prev.clone(),
                     next: data.next.clone(),
                     balance_factor: data.balance_factor,
-                })
-            });
-        }
+                },
+            )
+        });
     }
 
     ///  Check if key is present in the tree.
@@ -325,11 +341,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     fn range_get_start(&self, start_bound: Bound<&K>, direction: Direction) -> Option<K> {
         let start = match start_bound {
             Bound::Included(k) => self.store.get(k).map(|n| n.key.clone()),
-            Bound::Excluded(k) =>
-                self.store
-                    .get(k)
-                    .map(|n| n.next(direction))
-                    .flatten(),
+            Bound::Excluded(k) => self.store.get(k).map(|n| n.next(direction)).flatten(),
             Bound::Unbounded => None,
         };
 
@@ -344,7 +356,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         let mut current = self.root.clone();
         let mut result = None;
         while current.is_some() {
-            let node = self.store
+            let node = self
+                .store
                 .get(&current.clone().unwrap())
                 .expect("Node of subtree should exist.");
             match lower_bound.within_bound(&node.key, direction) {
@@ -378,21 +391,16 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         let mut parent = None;
         while let Some(parent_key) = current.as_ref() {
             let current_node = self.get_node(parent_key).expect("Root should exist");
-            match current_node.get_child_in_key_direction(key) {
-                Some(child) => {
-                    parent = current;
-                    current = child.cloned();
-                }
-                None => {
-                    panic!("Key already exists this should be caught in the beginning of insert");
-                }
-            }
+            parent = current;
+            current = current_node
+                .get_child_in_key_direction(key)
+                .expect("Parent should have child in key direction")
+                .cloned();
         }
         match parent {
             Some(parent_key) => {
-                let dir = Direction::from_ordering(key.cmp(&parent_key)).expect(
-                    "Parent has to be different"
-                );
+                let dir = Direction::from_ordering(key.cmp(&parent_key))
+                    .expect("Parent has to be different");
                 self.insert_node_and_adjust_pointers(&parent_key, key, value, dir);
                 Some((parent_key, dir))
             }
@@ -407,26 +415,32 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
 
     /// Adds a new node to the primary store and a reference entry to the cache.
     fn add_node(&mut self, parent: Option<K>, key: &K, value: V, prev: Option<K>, next: Option<K>) {
-        self.store.insert(key.clone(), Node {
-            key: key.clone(),
-            value,
-            left_child: None,
-            right_child: None,
-            next: next.clone(),
-            prev: prev.clone(),
-            parent: parent.clone(),
-            balance_factor: 0,
-        });
-        self.store_cache.insert(key.clone(), Node {
-            key: key.clone(),
-            value: (),
-            left_child: None,
-            right_child: None,
-            next,
-            prev,
-            parent,
-            balance_factor: 0,
-        });
+        self.store.insert(
+            key.clone(),
+            Node {
+                key: key.clone(),
+                value,
+                left_child: None,
+                right_child: None,
+                next: next.clone(),
+                prev: prev.clone(),
+                parent: parent.clone(),
+                balance_factor: 0,
+            },
+        );
+        self.store_cache.insert(
+            key.clone(),
+            Node {
+                key: key.clone(),
+                value: (),
+                left_child: None,
+                right_child: None,
+                next,
+                prev,
+                parent,
+                balance_factor: 0,
+            },
+        );
     }
 
     /// Inserts a node into the tree and adjusts the surrounding node pointers accordingly.
@@ -449,7 +463,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             .get_prev_next(dir);
         // If the other neighbour exists, update its pointer to the new node.
         if let Some(neighbour_key) = other_neighbour.clone() {
-            let neighbour = self.get_mut_node(&neighbour_key).expect("Neighbour should exist");
+            let neighbour = self
+                .get_mut_node(&neighbour_key)
+                .expect("Neighbour should exist");
             neighbour.set_prev_next(dir.opposite(), Some(key.clone()));
         }
 
@@ -465,11 +481,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 let max_key = parent_key.clone().max(neighbour);
                 (Some(min_key), Some(max_key))
             }
-            None =>
-                match dir {
-                    Direction::Left => (None, Some(parent_key.clone())),
-                    Direction::Right => (Some(parent_key.clone()), None),
-                }
+            None => match dir {
+                Direction::Left => (None, Some(parent_key.clone())),
+                Direction::Right => (Some(parent_key.clone()), None),
+            },
         };
         self.add_node(Some(parent_key.clone()), &key, value, prev, next);
     }
@@ -501,14 +516,18 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             let parent_before_balance = self
                 .get_node(&current_node)
                 .cloned()
-                .expect("Node should exist because key was saved earlier").parent;
+                .expect("Node should exist because key was saved earlier")
+                .parent;
             let (current_node_balance_factor, balance_child_direction) = {
                 let current_node = self
                     .get_mut_node(&current_node)
                     .expect("Node should exist because key was saved earlier");
                 current_node.balance_factor += child_dir.direction_factor();
                 // get balance direction before balancing because the parent can change afterwards.
-                (current_node.balance_factor, current_node.direction_to_parent())
+                (
+                    current_node.balance_factor,
+                    current_node.direction_to_parent(),
+                )
             };
             let mut new_root_balance_factor = None;
 
@@ -560,7 +579,10 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             self.root = replace_node;
         }
 
-        (replace_parent_tuple.or(del_node_parent_tuple), shorten.unwrap_or(true))
+        (
+            replace_parent_tuple.or(del_node_parent_tuple),
+            shorten.unwrap_or(true),
+        )
     }
 
     /// Given a node set for deletion (`del_node`), this function calculates
@@ -589,7 +611,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// If `replace_node` is `None`, it effectively removes `del_node` from its parent's children.
     fn replace_del_node_in_parent(&mut self, del_node: &Node<K, ()>, replace_node: Option<K>) {
         if let Some(parent_key) = &del_node.parent {
-            let parent_node = self.get_mut_node(&parent_key).expect("Parent not in KVStore");
+            let parent_node = self
+                .get_mut_node(&parent_key)
+                .expect("Parent not in KVStore");
             parent_node.replace_child(&del_node.key, replace_node);
         }
     }
@@ -603,8 +627,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             self.get_mut_node(next).expect("Next is not in store").prev = del_node.prev.clone();
         });
         del_node.prev.as_ref().map(|prev| {
-            self.get_mut_node(prev).expect("Del node prev is not in store").next =
-                del_node.next.clone();
+            self.get_mut_node(prev)
+                .expect("Del node prev is not in store")
+                .next = del_node.next.clone();
         });
     }
 
@@ -634,14 +659,12 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     ) -> ((K, Direction), bool) {
         let replace = self.get_node(replace).expect("Node should exist.").clone();
         let replace_child = self.rewire_replace_node_children(&replace, del_node);
-        let replace_parent_information = self.rewire_replace_node_parent(
-            &replace,
-            &del_node,
-            replace_child,
-        );
+        let replace_parent_information =
+            self.rewire_replace_node_parent(&replace, &del_node, replace_child);
         self.rewire_delete_node_child(del_node, &replace.key);
-        self.get_mut_node(&replace.key).expect("Replace should exist").parent =
-            del_node.parent.clone();
+        self.get_mut_node(&replace.key)
+            .expect("Replace should exist")
+            .parent = del_node.parent.clone();
         replace_parent_information
     }
 
@@ -666,10 +689,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         // rewire possible child of replace if replace and del_node are not parent and child.
         if replace.parent.as_ref() != Some(&del_node.key) {
             replace_child.clone().map(|k| {
-                self
-                    .get_mut_node(&k)
-                    .expect("Replace child not in store but present in replace as child").parent =
-                    replace.parent.clone();
+                self.get_mut_node(&k)
+                    .expect("Replace child not in store but present in replace as child")
+                    .parent = replace.parent.clone();
             });
         }
         replace_child
@@ -697,7 +719,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         del_node: &Node<K, ()>,
         replace_child: Option<K>,
     ) -> ((K, Direction), bool) {
-        let mut replace_parent_key = replace.parent
+        let mut replace_parent_key = replace
+            .parent
             .clone()
             .expect("should have parent because it is a child of the del_node.");
         let mut replace_parent_direction = replace
@@ -707,13 +730,14 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         if del_node.key == replace_parent_key {
             // if parent is node to delete, we do not have to rewrite stuff because node will be lost anyway.
             // change balance factor of replace because it will not be in the parent chain.
-            let replace = self.get_mut_node(&replace.key).expect("Replace should exist");
-            let replace_balance_factor =
-                del_node.balance_factor.clone() +
-                    replace
-                        .direction_from_other(del_node.key.clone())
-                        .expect("Should have different keys")
-                        .direction_factor();
+            let replace = self
+                .get_mut_node(&replace.key)
+                .expect("Replace should exist");
+            let replace_balance_factor = del_node.balance_factor.clone()
+                + replace
+                    .direction_from_other(del_node.key.clone())
+                    .expect("Should have different keys")
+                    .direction_factor();
             replace.balance_factor = replace_balance_factor;
             shorten = replace_balance_factor == 0;
             del_node.parent.clone().map(|parent| {
@@ -729,8 +753,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             replace_parent.replace_child(&replace.key, replace_child.clone());
             replace_parent.set_child(direction.opposite(), replace_child);
             // replace should max have one child so we have to rewire the leftover child:
-            self.get_mut_node(&replace.key).expect("Replace should exist").balance_factor =
-                del_node.balance_factor;
+            self.get_mut_node(&replace.key)
+                .expect("Replace should exist")
+                .balance_factor = del_node.balance_factor;
             shorten = true;
         }
         ((replace_parent_key, replace_parent_direction), shorten)
@@ -757,8 +782,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             return;
         }
         children.iter().for_each(|(child, _)| {
-            self.get_mut_node(child).expect("Child of delete not in store but in tree").parent =
-                Some(replace.clone());
+            self.get_mut_node(child)
+                .expect("Child of delete not in store but in tree")
+                .parent = Some(replace.clone());
         });
         {
             let replace_node = self.get_mut_node(replace).expect("Replace should exist");
@@ -788,7 +814,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             .expect("Child should exist");
         let child_balance_factor = self
             .get_node(&child_id)
-            .expect("Child should exist").balance_factor;
+            .expect("Child should exist")
+            .balance_factor;
         if child_balance_factor.signum() == balance_direction.direction_factor() {
             self.balance_with_subtree_in_same_direction(root, &child_id, balance_direction)
         } else if child_balance_factor == 0 {
@@ -827,8 +854,12 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
          *  / \ / \
          * A  A A  A
          */
-        self.get_mut_node(child).expect("Child in balance should exist").balance_factor = 0;
-        self.get_mut_node(root).expect("Balance root should exist").balance_factor = 0;
+        self.get_mut_node(child)
+            .expect("Child in balance should exist")
+            .balance_factor = 0;
+        self.get_mut_node(root)
+            .expect("Balance root should exist")
+            .balance_factor = 0;
         self.rotate(imbalance_direction.opposite(), root, child);
         // Balance_factor of new root=child=0
         0
@@ -869,10 +900,12 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
          * -> C.bf = -1, R.bf = -1
          *
          */
-        self.get_mut_node(root).expect("Root in balance should exist").balance_factor =
-            imbalance_direction.direction_factor();
-        self.get_mut_node(child).expect("Child in balance should exist").balance_factor =
-            imbalance_direction.opposite().direction_factor();
+        self.get_mut_node(root)
+            .expect("Root in balance should exist")
+            .balance_factor = imbalance_direction.direction_factor();
+        self.get_mut_node(child)
+            .expect("Child in balance should exist")
+            .balance_factor = imbalance_direction.opposite().direction_factor();
         self.rotate(imbalance_direction.opposite(), root, child);
         // Balance_factor of new root=child
         imbalance_direction.opposite().direction_factor()
@@ -950,7 +983,9 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         direction: Direction,
         new_root_balance_factor: i32,
     ) {
-        let root = self.get_mut_node(node_id).expect("Root in balance should exist");
+        let root = self
+            .get_mut_node(node_id)
+            .expect("Root in balance should exist");
         root.balance_factor = match new_root_balance_factor == direction.direction_factor() {
             false => 0,
             true => direction.opposite().direction_factor(),
@@ -999,29 +1034,36 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         }
         let left_over_child;
         {
-            let child = self.get_mut_node(child).expect("Rotate without child at right position");
+            let child = self
+                .get_mut_node(child)
+                .expect("Rotate without child at right position");
             child.parent = parent_key;
             left_over_child = child.get_child(rotate_direction);
             child.set_child(rotate_direction, Some(root.clone()));
         }
         if let Some(old_root_child_key) = left_over_child.as_ref() {
-            self.get_mut_node(old_root_child_key).expect("Child of child not in store").parent =
-                Some(root.clone());
+            self.get_mut_node(old_root_child_key)
+                .expect("Child of child not in store")
+                .parent = Some(root.clone());
         }
-        let root = self.get_mut_node(root).expect("Rotate without root in Store");
+        let root = self
+            .get_mut_node(root)
+            .expect("Rotate without root in Store");
         root.set_child(rotate_direction.opposite(), left_over_child);
         root.parent = Some(child.clone());
     }
 
     fn rotate_rewire_parent(&mut self, root: &K, child: &K) -> Option<K> {
-        let parent = self.get_node(root).expect("rewire Node should exist").parent.clone();
-        parent
-            .as_ref()
-            .map(|parent| {
-                self.get_mut_node(parent)
-                    .expect("Parent of rotate root not in store")
-                    .replace_child(root, Some(child.clone()))
-            });
+        let parent = self
+            .get_node(root)
+            .expect("rewire Node should exist")
+            .parent
+            .clone();
+        parent.as_ref().map(|parent| {
+            self.get_mut_node(parent)
+                .expect("Parent of rotate root not in store")
+                .replace_child(root, Some(child.clone()))
+        });
         parent
     }
 }
@@ -1125,11 +1167,9 @@ impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K
     /// Determines the node's direction relative to its parent.
     /// Returns `Some(Direction)` indicating whether this node is to the left or right of its parent, or `None` if there's no parent.
     fn direction_to_parent(&self) -> Option<Direction> {
-        self.parent
-            .as_ref()
-            .map(|parent| {
-                Direction::from_ordering(parent.cmp(&self.key)).expect("Nodes should be unequal")
-            })
+        self.parent.as_ref().map(|parent| {
+            Direction::from_ordering(parent.cmp(&self.key)).expect("Nodes should be unequal")
+        })
     }
 
     /// Determines the direction of another node relative to this node.
@@ -1147,7 +1187,6 @@ impl<K: ScryptoSbor + Clone + Eq + Ord + Display + Debug, V: ScryptoSbor> Node<K
         }
     }
 }
-
 
 pub struct ItemRef<'a, K: ScryptoSbor, V: ScryptoSbor> {
     item: KeyValueEntryRef<'a, Node<K, V>>,
@@ -1246,7 +1285,6 @@ impl Direction {
     }
 }
 
-
 /// `NodeIterator` iterates over nodes in a doubly-linked list structure,
 /// represented by the `next` and `prev` pointers, which are stored in
 /// a key-value store. The nodes are traversed in a specific direction
@@ -1278,7 +1316,8 @@ impl<K: ScryptoSbor + Clone, V: ScryptoSbor> NodeIterator<'_, K, V> {
 }
 
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + Clone> Iterator
-for NodeIterator<'a, K, V> {
+    for NodeIterator<'a, K, V>
+{
     type Item = (K, V);
 
     /// Advances the iterator to the next node and returns the value.
@@ -1291,8 +1330,9 @@ for NodeIterator<'a, K, V> {
         let current_key = self.current.clone()?;
         let node = self.store.get(&current_key).expect("Node not found");
         let next_key = node.next(self.direction);
-        self.current = match
-        next_key.as_ref().map(|k| self.end.as_ref().within_bound(k, self.direction))
+        self.current = match next_key
+            .as_ref()
+            .map(|k| self.end.as_ref().within_bound(k, self.direction))
         {
             Some(true) => next_key,
             _ => None,
@@ -1314,11 +1354,9 @@ pub enum IterMutControl {
     Break,
 }
 
-impl<
-    'a,
-    K: ScryptoSbor + Clone + Ord + Eq + Display + Debug,
-    V: ScryptoSbor + Clone
-> NodeIteratorMut<'a, K, V> {
+impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + Clone>
+    NodeIteratorMut<'a, K, V>
+{
     /// Calls the provided function on each value in the iterator.
     ///
     /// The iterator moves in the specified direction. If the next node in that direction
@@ -1332,8 +1370,9 @@ impl<
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
-            self.current = match
-            next.as_ref().map(|k| self.end.as_ref().within_bound(k, self.direction))
+            self.current = match next
+                .as_ref()
+                .map(|k| self.end.as_ref().within_bound(k, self.direction))
             {
                 Some(true) => next,
                 _ => None,
@@ -1358,18 +1397,16 @@ impl<K: Ord> WithinBound<K> for Bound<&K> {
     /// - `direction`: Direction to check the boundary against.
     fn within_bound(&self, key: &K, direction: Direction) -> bool {
         match direction {
-            Direction::Left =>
-                match self {
-                    Bound::Unbounded => true,
-                    Bound::Included(other) => key >= other,
-                    Bound::Excluded(other) => key > other,
-                }
-            Direction::Right =>
-                match self {
-                    Bound::Unbounded => true,
-                    Bound::Included(other) => key <= other,
-                    Bound::Excluded(other) => key < other,
-                }
+            Direction::Left => match self {
+                Bound::Unbounded => true,
+                Bound::Included(other) => key >= other,
+                Bound::Excluded(other) => key > other,
+            },
+            Direction::Right => match self {
+                Bound::Unbounded => true,
+                Bound::Included(other) => key <= other,
+                Bound::Excluded(other) => key < other,
+            },
         }
     }
 }

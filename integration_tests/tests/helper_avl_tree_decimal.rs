@@ -36,7 +36,7 @@ impl TestHelper {
             self.env.package_address("test"),
             "AvlTestWrapperDecimal",
             "instantiate",
-            manifest_args!()
+            manifest_args!(),
         );
         // To support instruction labels we are tracking:
         // instruction_count = the total amount of new instructions added in this function
@@ -59,7 +59,7 @@ impl TestHelper {
         self.env.manifest_builder = manifest_builder.call_method(
             self.tree_address.unwrap(),
             "insert",
-            manifest_args!(key, value)
+            manifest_args!(key, value),
         );
         self.env.new_instruction("insert", 1, 0);
         self
@@ -67,11 +67,8 @@ impl TestHelper {
 
     pub fn remove(&mut self, key: Decimal) {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
-        self.env.manifest_builder = manifest_builder.call_method(
-            self.tree_address.unwrap(),
-            "remove",
-            manifest_args!(key)
-        );
+        self.env.manifest_builder =
+            manifest_builder.call_method(self.tree_address.unwrap(), "remove", manifest_args!(key));
         self.env.new_instruction("remove", 1, 0);
     }
 
@@ -80,7 +77,7 @@ impl TestHelper {
         self.env.manifest_builder = manifest_builder.call_method(
             self.tree_address.unwrap(),
             "check_health",
-            manifest_args!()
+            manifest_args!(),
         );
         self.env.new_instruction("check_health", 1, 0);
         self
@@ -91,7 +88,7 @@ impl TestHelper {
         self.env.manifest_builder = manifest_builder.call_method(
             self.tree_address.unwrap(),
             "get_range",
-            manifest_args!(key1, key2)
+            manifest_args!(key1, key2),
         );
         self.env.new_instruction("get_range", 1, 0);
         self
@@ -102,7 +99,7 @@ impl TestHelper {
         key1: Decimal,
         key2: Decimal,
         output_expected: Vec<(Decimal, Decimal)>,
-        verbose: bool
+        verbose: bool,
     ) {
         let receipt = self.get_range(key1, key2).execute_expect_success(verbose);
         let output: Vec<Vec<(Decimal, Decimal)>> = receipt.outputs("get_range");

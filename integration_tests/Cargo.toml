@@ -1,14 +1,18 @@
 [package]
-name = "scrypto_avltree"
-version = "1.0.1"
+name = "integration_test"
+version = "0.1.0"
 edition = "2021"
-license = "MIT"
-description = "AvlTree implementation in Scrypto with KVStore"
-repository = "https://github.com/ociswap/scrypto-avltree"
 
 [dependencies]
 sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
 scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
+scrypto_avltree = { path = ".." }
+
+[dev-dependencies]
+transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
+radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
+scrypto_testenv = { git = "https://github.com/ociswap/scrypto-testenv", branch = "main", version = "0.5.3" }
+lazy_static = "1.4.0"
 
 [profile.dev]
 opt-level = 'z'        # Optimize for size.
@@ -28,7 +32,6 @@ overflow-checks = true # Panic in the case of an overflow.
 
 [lib]
 crate-type = ["cdylib", "lib"]
-doctest = false
 
 [workspace]
 # Set the package crate as its own empty workspace, to hide it from any potential ancestor workspace
