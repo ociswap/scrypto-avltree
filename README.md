@@ -82,13 +82,13 @@ for (key, value) in tree.range(dec!(1)..dec!(10)) {
 gives 10 times "mutated" as output.
 Analogue to the `range` method the `range_back_mut` method gives you a descending iterator.
 
-### Delete
-To delete a key value pair from the tree you can use the `delete` method:
+### Remove
+To remove a key value pair from the tree you can use the `remove` method:
 ```rust
-let value = tree.delete(&dec!(1));
+let value = tree.remove(&dec!(1));
 info!("{}", value);
 ```
-The method returns the value that was deleted from the tree. 
+The method returns the value that was removed from the tree. 
 None is returned, if the key is not present in the tree.
 
 # Contribute
