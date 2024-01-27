@@ -34,9 +34,9 @@ mod avltree_range {
 
     #[test]
     fn test_range_is_sorted() {
-        let mut helper = helper_with_initial_data(vec![
-            13, 24, 43, 23, 12, 23, 13, 42, 53, 54, 21, 11, 12, 14, 16,
-        ]);
+        let mut helper = helper_with_initial_data(
+            vec![13, 24, 43, 23, 12, 23, 13, 42, 53, 54, 21, 11, 12, 14, 16]
+        );
         helper.get_range_success(
             i32::MIN,
             i32::MAX,
@@ -52,17 +52,17 @@ mod avltree_range {
                 (42, 42),
                 (43, 43),
                 (53, 53),
-                (54, 54),
+                (54, 54)
             ],
-            true,
+            true
         );
     }
 
     #[test]
     fn test_range_back_is_sorted() {
-        let mut helper = helper_with_initial_data(vec![
-            13, 24, 43, 23, 12, 23, 13, 42, 53, 54, 21, 11, 12, 14, 16,
-        ]);
+        let mut helper = helper_with_initial_data(
+            vec![13, 24, 43, 23, 12, 23, 13, 42, 53, 54, 21, 11, 12, 14, 16]
+        );
         helper.get_range_back_success(
             i32::MIN,
             i32::MAX,
@@ -78,9 +78,9 @@ mod avltree_range {
                 (14, 14),
                 (13, 13),
                 (12, 12),
-                (11, 11),
+                (11, 11)
             ],
-            true,
+            true
         );
     }
 
@@ -101,49 +101,49 @@ mod avltree_range {
                 (18, 18),
                 (17, 17),
                 (16, 16),
-                (15, 15),
+                (15, 15)
             ],
-            true,
+            true
         );
 
-        let receipt = helper
-            .get_range_back_both_included(15, 25)
-            .execute_expect_success(true);
+        let receipt = helper.get_range_back_both_included(15, 25).execute_expect_success(true);
         let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
         assert_eq!(
             output,
-            vec![vec![
-                (25, 25),
-                (24, 24),
-                (23, 23),
-                (22, 22),
-                (21, 21),
-                (20, 20),
-                (19, 19),
-                (18, 18),
-                (17, 17),
-                (16, 16),
-                (15, 15),
-            ]]
+            vec![
+                vec![
+                    (25, 25),
+                    (24, 24),
+                    (23, 23),
+                    (22, 22),
+                    (21, 21),
+                    (20, 20),
+                    (19, 19),
+                    (18, 18),
+                    (17, 17),
+                    (16, 16),
+                    (15, 15)
+                ]
+            ]
         );
 
-        let receipt = helper
-            .get_range_back_both_excluded(15, 25)
-            .execute_expect_success(true);
+        let receipt = helper.get_range_back_both_excluded(15, 25).execute_expect_success(true);
         let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
         assert_eq!(
             output,
-            vec![vec![
-                (24, 24),
-                (23, 23),
-                (22, 22),
-                (21, 21),
-                (20, 20),
-                (19, 19),
-                (18, 18),
-                (17, 17),
-                (16, 16),
-            ]]
+            vec![
+                vec![
+                    (24, 24),
+                    (23, 23),
+                    (22, 22),
+                    (21, 21),
+                    (20, 20),
+                    (19, 19),
+                    (18, 18),
+                    (17, 17),
+                    (16, 16)
+                ]
+            ]
         );
     }
 
@@ -155,67 +155,153 @@ mod avltree_range {
         let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range");
         assert_eq!(
             output,
-            vec![vec![
-                (15, 15),
-                (16, 16),
-                (17, 17),
-                (18, 18),
-                (19, 19),
-                (20, 20),
-                (21, 21),
-                (22, 22),
-                (23, 23),
-                (24, 24),
-            ]]
+            vec![
+                vec![
+                    (15, 15),
+                    (16, 16),
+                    (17, 17),
+                    (18, 18),
+                    (19, 19),
+                    (20, 20),
+                    (21, 21),
+                    (22, 22),
+                    (23, 23),
+                    (24, 24)
+                ]
+            ]
         );
 
-        let receipt = helper
-            .get_range_both_included(15, 25)
-            .execute_expect_success(true);
+        let receipt = helper.get_range_both_included(15, 25).execute_expect_success(true);
         let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
         assert_eq!(
             output,
-            vec![vec![
-                (15, 15),
-                (16, 16),
-                (17, 17),
-                (18, 18),
-                (19, 19),
-                (20, 20),
-                (21, 21),
-                (22, 22),
-                (23, 23),
-                (24, 24),
-                (25, 25),
-            ]]
+            vec![
+                vec![
+                    (15, 15),
+                    (16, 16),
+                    (17, 17),
+                    (18, 18),
+                    (19, 19),
+                    (20, 20),
+                    (21, 21),
+                    (22, 22),
+                    (23, 23),
+                    (24, 24),
+                    (25, 25)
+                ]
+            ]
         );
 
-        let receipt = helper
-            .get_range_both_excluded(15, 25)
-            .execute_expect_success(true);
+        let receipt = helper.get_range_both_excluded(15, 25).execute_expect_success(true);
         let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
         assert_eq!(
             output,
-            vec![vec![
-                (16, 16),
-                (17, 17),
-                (18, 18),
-                (19, 19),
-                (20, 20),
-                (21, 21),
-                (22, 22),
-                (23, 23),
-                (24, 24),
-            ]]
+            vec![
+                vec![
+                    (16, 16),
+                    (17, 17),
+                    (18, 18),
+                    (19, 19),
+                    (20, 20),
+                    (21, 21),
+                    (22, 22),
+                    (23, 23),
+                    (24, 24)
+                ]
+            ]
         );
     }
 
     #[test]
+    fn test_range_only_contains_range_first_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper.get_range_both_included(9, 10).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(10, 10)]]);
+
+        let receipt = helper.get_range_both_included(9, 11).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(10, 10), (11, 11)]]);
+
+        let receipt = helper.get_range_both_included(10, 11).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(10, 10), (11, 11)]]);
+
+        let receipt = helper.get_range_both_included(10, 12).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(10, 10), (11, 11), (12, 12)]]);
+    }
+
+    #[test]
+    fn test_range_only_contains_range_first_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper.get_range_both_excluded(9, 10).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper.get_range_both_excluded(9, 11).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(10, 10)]]);
+
+        let receipt = helper.get_range_both_excluded(10, 11).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper.get_range_both_excluded(10, 12).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(11, 11)]]);
+    }
+
+    #[test]
+    fn test_range_only_contains_range_last_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper.get_range_both_included(29, 30).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(29, 29)]]);
+
+        let receipt = helper.get_range_both_included(28, 29).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(28, 28), (29, 29)]]);
+
+        let receipt = helper.get_range_both_included(28, 30).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(28, 28), (29, 29)]]);
+
+        let receipt = helper.get_range_both_included(27, 29).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(27, 27), (28, 28), (29, 29)]]);
+    }
+
+    #[test]
+    fn test_range_only_contains_range_last_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper.get_range_both_excluded(29, 30).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper.get_range_both_excluded(28, 29).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper.get_range_both_excluded(28, 30).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(29, 29)]]);
+
+        let receipt = helper.get_range_both_excluded(27, 29).execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(28, 28)]]);
+    }
+
+    // TODO add same tests for range_back
+
+    #[test]
     fn test_range_after_mutating() {
         let mut helper = helper_with_initial_data((10..30).collect());
-        helper
-            .update_values(15, 25, -1)
-            .execute_expect_success(true);
+        helper.update_values(15, 25, -1).execute_expect_success(true);
         helper.get_range_success(
             15,
             25,
@@ -229,24 +315,22 @@ mod avltree_range {
                 (21, -1),
                 (22, -1),
                 (23, -1),
-                (24, -1),
+                (24, -1)
             ],
-            true,
+            true
         );
         helper.get_range_success(
             25,
             30,
             vec![(25, 25), (26, 26), (27, 27), (28, 28), (29, 29)],
-            true,
+            true
         );
     }
 
     #[test]
     fn test_range_after_mutating_with_max_iters() {
         let mut helper = helper_with_initial_data((10..30).collect());
-        helper
-            .update_values_max_iters(15, 25, 5, -1)
-            .execute_expect_success(true);
+        helper.update_values_max_iters(15, 25, 5, -1).execute_expect_success(true);
         helper.get_range_success(
             15,
             25,
@@ -260,15 +344,15 @@ mod avltree_range {
                 (21, 21),
                 (22, 22),
                 (23, 23),
-                (24, 24),
+                (24, 24)
             ],
-            true,
+            true
         );
         helper.get_range_success(
             25,
             30,
             vec![(25, 25), (26, 26), (27, 27), (28, 28), (29, 29)],
-            true,
+            true
         );
     }
 }
