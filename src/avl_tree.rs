@@ -1406,13 +1406,13 @@ impl<K: Ord + Debug> WithinBound<K> for Bound<&K> {
         let result = match direction {
             Direction::Left => match self {
                 Bound::Unbounded => true,
-                Bound::Included(other) => key <= other,
-                Bound::Excluded(other) => key < other,
+                Bound::Included(bound) => key <= bound,
+                Bound::Excluded(bound) => key < bound,
             },
             Direction::Right => match self {
                 Bound::Unbounded => true,
-                Bound::Included(other) => key >= other,
-                Bound::Excluded(other) => key > other,
+                Bound::Included(bound) => key >= bound,
+                Bound::Excluded(bound) => key > bound,
             },
         };
         return result;
