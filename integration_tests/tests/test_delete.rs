@@ -263,13 +263,13 @@ mod avltree_delete {
         helper.get_range_success(i32::MIN, i32::MAX, should_be_in_tree, true);
     }
     #[test]
-    fn test_delete_gives_correct_return_value(){
+    fn test_delete_gives_correct_return_value() {
         let mut helper = TestHelper::new();
         helper.instantiate_default(false);
-        helper.insert(1,1);
-        helper.insert(0,1);
-        helper.insert(1,100);
-        helper.insert(11,1);
+        helper.insert(1, 1);
+        helper.insert(0, 1);
+        helper.insert(1, 100);
+        helper.insert(11, 1);
         helper.execute_expect_success(false);
         helper.remove(1);
         let receipt = helper.execute_expect_success(false);
@@ -287,7 +287,7 @@ mod avltree_delete {
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
         assert_eq!(remove_res[0], None);
-        helper.insert(1,1000);
+        helper.insert(1, 1000);
         helper.remove(1);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
@@ -295,14 +295,14 @@ mod avltree_delete {
     }
 
     #[test]
-    fn test_delete_not_existing(){
+    fn test_delete_not_existing() {
         let mut helper = TestHelper::new();
         helper.instantiate_default(false);
         helper.remove(1);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
         assert_eq!(remove_res[0], None);
-        helper.insert(1,1);
+        helper.insert(1, 1);
         helper.execute_expect_success(false);
         helper.insert(-23213211, 29302381);
         helper.remove(29302381);

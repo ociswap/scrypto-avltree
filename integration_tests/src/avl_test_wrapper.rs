@@ -178,9 +178,11 @@ mod avl_test_wrapper {
                 });
         }
 
-        pub fn update_value(&mut self, key: i32, new_value: i32) {
-            let mut test = self.avl_tree.get_mut(&key).unwrap();
+        pub fn update_value(&mut self, key: i32, new_value: i32) -> Option<i32> {
+            let mut test = self.avl_tree.get_mut(&key)?;
+            let old_value = test.clone();
             *test = new_value;
+            Some(old_value)
         }
 
         pub fn get(&mut self, key: i32) -> Option<i32> {
