@@ -75,7 +75,11 @@ mod avl_test_wrapper {
             }
             result
         }
-        pub fn get_range_mut_both_excluded(&mut self, key1: i32, key2: i32) -> Vec<(i32, i32,Option<i32>)> {
+        pub fn get_range_mut_both_excluded(
+            &mut self,
+            key1: i32,
+            key2: i32,
+        ) -> Vec<(i32, i32, Option<i32>)> {
             let mut result = Vec::new();
             self.avl_tree
                 .range_mut((Excluded(key1), Excluded(key2)))
@@ -85,7 +89,11 @@ mod avl_test_wrapper {
                 });
             result
         }
-        pub fn get_range_mut_both_included(&mut self, key1: i32, key2: i32) -> Vec<(i32, i32,Option<i32>)> {
+        pub fn get_range_mut_both_included(
+            &mut self,
+            key1: i32,
+            key2: i32,
+        ) -> Vec<(i32, i32, Option<i32>)> {
             let mut result = Vec::new();
             self.avl_tree
                 .range_mut((Included(key1), Included(key2)))
