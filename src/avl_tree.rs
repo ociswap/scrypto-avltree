@@ -348,9 +348,11 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             match lower_bound.within_bound(&node.key, direction) {
                 true => {
                     result = current.clone();
+                    // Current node is inside the range -> go to the boarder of the range
                     current = node.get_child(direction.opposite()).clone();
                 }
                 false => {
+                    // Current node is outside the range -> go towards the range.
                     current = node.get_child(direction).clone();
                 }
             }
