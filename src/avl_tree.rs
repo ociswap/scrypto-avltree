@@ -80,28 +80,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         if let Some(mut existing_node) = self.store.get_mut(&key) {
             return Some(mem::replace(&mut existing_node.value, value));
         }
-        let mut parent = self.insert_node_in_empty_spot(&key, value);
-        let mut deepen = true;
-        while deepen && parent.is_some() {
-            let (node, insert_direction) = parent.unwrap();
-            let cached_node = self
-                .get_mut_node(&node)
-                .expect("Parent of insert should exist");
-            parent = cached_node
-                .parent
-                .clone()
-                .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
-            if deepen {
-                deepen = cached_node.balance_factor == 0;
-                cached_node.balance_factor += insert_direction.direction_factor();
-            }
-            if cached_node.balance_factor.abs() == 2 {
-                self.balance(&node, insert_direction);
-            }
-            if !deepen {
-                break;
-            }
-        }
+        let parent = self.insert_node_in_empty_spot(&key, value);
+        self.balance_after_insert(parent);
         self.flush_cache();
         None
     }
@@ -414,6 +394,36 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 self.add_node(None, &key, value, None, None);
                 self.root = Some(key.clone());
                 None
+            }
+        }
+    }
+    
+
+    /// Balance tree after inserting a node
+    /// This function goes up the tree from the inserted node and balances a level if it is
+    /// necessary.
+    /// 
+    /// parent_info: Tuple of the node above inserted node and direction of parent
+    fn balance_after_insert(&mut self, mut parent_info: Option<(K, Direction)>){
+        let mut deepen = true;
+        while deepen && parent_info.is_some() {
+            let (node, insert_direction) = parent_info.unwrap();
+            let cached_node = self
+                .get_mut_node(&node)
+                .expect("Parent of insert should exist");
+            parent_info = cached_node
+                .parent
+                .clone()
+                .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
+            if deepen {
+                deepen = cached_node.balance_factor == 0;
+                cached_node.balance_factor += insert_direction.direction_factor();
+            }
+            if cached_node.balance_factor.abs() == 2 {
+                self.balance(&node, insert_direction);
+            }
+            if !deepen {
+                break;
             }
         }
     }
