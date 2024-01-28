@@ -312,7 +312,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         end_bound: Bound<&K>,
         direction: Direction,
     ) -> NodeIterator<K, V> {
-        let start = self.range_get_start(start_bound, direction);
+        let start = self.range_get_start(start_bound, end_bound, direction);
         NodeIterator {
             current: start,
             direction,
@@ -328,7 +328,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         end_bound: Bound<&K>,
         direction: Direction,
     ) -> NodeIteratorMut<K, V> {
-        let start = self.range_get_start(start_bound, direction);
+        let start = self.range_get_start(start_bound, end_bound, direction);
         NodeIteratorMut {
             current: start,
             direction,
@@ -338,15 +338,20 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 
     /// Get the first node that is inside the range. If the bound is in the tree O(1), otherwise O(log n).
-    fn range_get_start(&self, start_bound: Bound<&K>, direction: Direction) -> Option<K> {
+    fn range_get_start(
+        &self,
+        start_bound: Bound<&K>,
+        end_bound: Bound<&K>,
+        direction: Direction,
+    ) -> Option<K> {
         let start = match start_bound {
             Bound::Included(k) => self.store.get(k).map(|n| n.key.clone()),
             Bound::Excluded(k) => self.store.get(k).map(|n| n.next(direction)).flatten(),
             Bound::Unbounded => None,
         };
-
-        let start = start.or_else(|| self.find_first_node(start_bound, direction));
         start
+            .or_else(|| self.find_first_node(start_bound, direction))
+            .filter(|s| end_bound.within_bound(&s, direction.opposite()))
     }
 
     /// Finds the initial node within the specified range based on the given direction.
@@ -362,11 +367,11 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 .expect("Node of subtree should exist.");
             match lower_bound.within_bound(&node.key, direction) {
                 true => {
-                    current = node.get_child(direction).clone();
-                }
-                false => {
                     result = current.clone();
                     current = node.get_child(direction.opposite()).clone();
+                }
+                false => {
+                    current = node.get_child(direction).clone();
                 }
             }
         }
@@ -1332,7 +1337,7 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + C
         let next_key = node.next(self.direction);
         self.current = match next_key
             .as_ref()
-            .map(|k| self.end.as_ref().within_bound(k, self.direction))
+            .map(|k| self.end.as_ref().within_bound(k, self.direction.opposite()))
         {
             Some(true) => next_key,
             _ => None,
@@ -1372,7 +1377,7 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + C
             let next = node.next(self.direction);
             self.current = match next
                 .as_ref()
-                .map(|k| self.end.as_ref().within_bound(k, self.direction))
+                .map(|k| self.end.as_ref().within_bound(k, self.direction.opposite()))
             {
                 Some(true) => next,
                 _ => None,
@@ -1390,23 +1395,26 @@ trait WithinBound<K> {
     fn within_bound(&self, key: &K, direction: Direction) -> bool;
 }
 
-impl<K: Ord> WithinBound<K> for Bound<&K> {
+impl<K: Ord + Debug> WithinBound<K> for Bound<&K> {
     /// Determines if the key lies within the specified boundary.
     ///
     /// - `key`: The key to check against.
-    /// - `direction`: Direction to check the boundary against.
+    /// - `direction`: Direction in the direction of the range.
+    ///                So for example if the bound: Exclude(3) and the direction is left,
+    ///                then the key 3 is not within the bound, and key 2 is within the bound.
     fn within_bound(&self, key: &K, direction: Direction) -> bool {
-        match direction {
+        let result = match direction {
             Direction::Left => match self {
-                Bound::Unbounded => true,
-                Bound::Included(other) => key >= other,
-                Bound::Excluded(other) => key > other,
-            },
-            Direction::Right => match self {
                 Bound::Unbounded => true,
                 Bound::Included(other) => key <= other,
                 Bound::Excluded(other) => key < other,
             },
-        }
+            Direction::Right => match self {
+                Bound::Unbounded => true,
+                Bound::Included(other) => key >= other,
+                Bound::Excluded(other) => key > other,
+            },
+        };
+        return result;
     }
 }
