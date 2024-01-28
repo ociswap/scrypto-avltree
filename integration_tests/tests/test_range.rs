@@ -211,6 +211,26 @@ mod avltree_range {
     }
 
     #[test]
+    fn test_range_lower_bound_not_in_tree() {
+        let mut helper = helper_with_initial_data(vec![10, 12, 14, 16]);
+        let receipt = helper
+            .get_range_both_included(11, 15)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(12, 12), (14, 14)]]);
+        let receipt = helper
+            .get_range_both_excluded(11, 16)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(12, 12), (14, 14)]]);
+        let receipt = helper
+            .get_range_both_included(11, 16)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(12, 12), (14, 14), (16, 16)]]);
+    }
+
+    #[test]
     fn test_range_only_contains_range_first_included() {
         let mut helper = helper_with_initial_data((10..30).collect());
 

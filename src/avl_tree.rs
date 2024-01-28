@@ -318,20 +318,32 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 
     /// Get the first node that is inside the range. If the bound is in the tree O(1), otherwise O(log n).
+    /// Parameters:
+    /// - start_bound: The start bound of the range.
+    /// - end_bound: The end bound of the range.
+    /// - direction: The direction of the iterator.
+    ///
+    /// Returns:
+    /// - Some(K): The key of the first node that is inside the range.
     fn range_get_start(
         &self,
         start_bound: Bound<&K>,
         end_bound: Bound<&K>,
         direction: Direction,
     ) -> Option<K> {
-        // TODO comment what this all means and does
-        let start = match start_bound {
-            Bound::Included(k) => self.store.get(k).map(|n| n.key.clone()),
-            Bound::Excluded(k) => self.store.get(k).map(|n| n.next(direction)).flatten(),
+        // Get starting node, if it is inside the store we can derive the start in O(1).
+        // If self.store.get(k) is Some, the bound is contained inside the store. So the start is either k or the next node.
+        let start: Option<Option<K>> = match start_bound {
+            Bound::Included(k) => self.store.get(k).map(|n| Some(n.key.clone())),
+            Bound::Excluded(k) => self.store.get(k).map(|n| n.next(direction)),
             Bound::Unbounded => None,
         };
+
+        // When start is None we could not find the start bound directly in the store and we have to search in
+        // the tree with find_first_node.
+        // Afterwards we check if the starting node is inside the range.
         start
-            .or_else(|| self.find_first_node(start_bound, direction))
+            .unwrap_or_else(|| self.find_first_node(start_bound, direction))
             .filter(|s| end_bound.within_bound(&s, direction))
     }
 
@@ -400,14 +412,13 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             }
         }
     }
-    
 
     /// Balance tree after inserting a node
     /// This function goes up the tree from the inserted node and balances a level if it is
     /// necessary.
-    /// 
+    ///
     /// parent_info: Tuple of the node above inserted node and direction of parent
-    fn balance_after_insert(&mut self, mut parent_info: Option<(K, Direction)>){
+    fn balance_after_insert(&mut self, mut parent_info: Option<(K, Direction)>) {
         let mut deepen = true;
         while deepen && parent_info.is_some() {
             let (node, insert_direction) = parent_info.unwrap();
@@ -1404,7 +1415,6 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + C
     }
 }
 
-
 trait WithinBound<K> {
     fn within_bound(&self, key: &K, direction: Direction) -> bool;
 }
@@ -1428,6 +1438,6 @@ impl<K: Ord> WithinBound<K> for Bound<&K> {
                 Bound::Included(bound) => key <= bound,
                 Bound::Excluded(bound) => key < bound,
             },
-        }        
+        }
     }
 }
