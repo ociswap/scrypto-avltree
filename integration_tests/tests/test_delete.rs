@@ -113,16 +113,6 @@ mod avltree_delete {
 
     #[test]
     fn test_delete_empty_tree() {
-        // Tree after inserting:
-        //         48
-        //     27       81
-        // 13   40    72
-        //     35
-        // Tree after deleting 48
-        //         40
-        //     27       81
-        // 13   35    72
-        // Orphant 35 has to find a new place at the position of 40
         let vector = vec![];
         let to_delete = vec![];
         test_range(vector, to_delete);
