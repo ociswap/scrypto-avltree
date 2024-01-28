@@ -7,6 +7,8 @@ use scrypto_avltree::avl_tree_health::{check_health, print_tree_nice};
 
 #[blueprint]
 mod avl_test_wrapper {
+    use std::f32::consts::E;
+
     struct AvlTestWrapper {
         avl_tree: AvlTree<i32, i32>,
     }
@@ -73,7 +75,55 @@ mod avl_test_wrapper {
             }
             result
         }
+        pub fn get_range_mut_both_excluded(&mut self, key1: i32, key2: i32) -> Vec<(i32, i32,Option<i32>)> {
+            let mut result = Vec::new();
+            self.avl_tree
+                .range_mut((Excluded(key1), Excluded(key2)))
+                .for_each(|k, v, n| {
+                    result.push((k.clone(), v.clone(), n.clone()));
+                    return IterMutControl::Continue;
+                });
+            result
+        }
+        pub fn get_range_mut_both_included(&mut self, key1: i32, key2: i32) -> Vec<(i32, i32,Option<i32>)> {
+            let mut result = Vec::new();
+            self.avl_tree
+                .range_mut((Included(key1), Included(key2)))
+                .for_each(|k, v, n| {
+                    result.push((k.clone(), v.clone(), n.clone()));
+                    return IterMutControl::Continue;
+                });
+            result
+        }
 
+        pub fn get_range_back_mut_both_included(
+            &mut self,
+            key1: i32,
+            key2: i32,
+        ) -> Vec<(i32, i32, Option<i32>)> {
+            let mut result = Vec::new();
+            self.avl_tree
+                .range_back_mut((Included(key1), Included(key2)))
+                .for_each(|k, v, n| {
+                    result.push((k.clone(), v.clone(), n.clone()));
+                    return IterMutControl::Continue;
+                });
+            result
+        }
+        pub fn get_range_back_mut_both_excluded(
+            &mut self,
+            key1: i32,
+            key2: i32,
+        ) -> Vec<(i32, i32, Option<i32>)> {
+            let mut result = Vec::new();
+            self.avl_tree
+                .range_back_mut((Excluded(key1), Excluded(key2)))
+                .for_each(|k, v, n| {
+                    result.push((k.clone(), v.clone(), n.clone()));
+                    return IterMutControl::Continue;
+                });
+            result
+        }
         pub fn get_range_both_excluded(&mut self, key1: i32, key2: i32) -> Vec<(i32, i32)> {
             let mut result = Vec::new();
             for node in self.avl_tree.range((Excluded(key1), Excluded(key2))) {
