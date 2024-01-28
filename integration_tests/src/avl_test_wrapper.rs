@@ -23,8 +23,8 @@ mod avl_test_wrapper {
             component
         }
 
-        pub fn insert(&mut self, key: i32, value: i32) {
-            self.avl_tree.insert(key, value);
+        pub fn insert(&mut self, key: i32, value: i32) -> Option<i32> {
+            self.avl_tree.insert(key, value)
         }
 
         pub fn check_health(&mut self) {

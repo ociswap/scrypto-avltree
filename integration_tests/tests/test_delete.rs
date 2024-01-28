@@ -112,6 +112,23 @@ mod avltree_delete {
     }
 
     #[test]
+    fn test_delete_empty_tree() {
+        // Tree after inserting:
+        //         48
+        //     27       81
+        // 13   40    72
+        //     35
+        // Tree after deleting 48
+        //         40
+        //     27       81
+        // 13   35    72
+        // Orphant 35 has to find a new place at the position of 40
+        let vector = vec![];
+        let to_delete = vec![];
+        test_range(vector, to_delete);
+    }
+
+    #[test]
     fn test_replace_has_children() {
         // Tree after inserting:
         //         48
@@ -244,6 +261,37 @@ mod avltree_delete {
         println!("insert: {:?}", insert);
         println!("remove: {:?}", remove);
         helper.get_range_success(i32::MIN, i32::MAX, should_be_in_tree, true);
+    }
+    #[test]
+    fn test_delete_gives_correct_return_value(){
+        let mut helper = TestHelper::new();
+        helper.instantiate_default(false);
+        helper.insert(1,1);
+        helper.insert(0,1);
+        helper.insert(1,100);
+        helper.insert(11,1);
+        helper.execute_expect_success(false);
+        helper.remove(1);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], Some(100));
+        helper.remove(1);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], None);
+        helper.remove(0);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], Some(1));
+        helper.remove(0);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], None);
+        helper.insert(1,1000);
+        helper.remove(1);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], Some(1000));
     }
 
     #[test]

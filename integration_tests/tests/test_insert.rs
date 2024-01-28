@@ -151,4 +151,21 @@ mod avltree_insert {
             .collect();
         helper.get_range_success(i32::MIN, i32::MAX, output_expected, true);
     }
+    #[test]
+    fn test_insert_gives_correct_return_value(){
+        let mut helper = TestHelper::new();
+        helper.instantiate_default(false);
+        helper.insert(1,1);
+        let receipt = helper.execute_expect_success(false);
+        let insert_result: Vec<Option<i32>> = receipt.outputs("insert");
+        assert_eq!(insert_result[0], None);
+        helper.insert(1, 100);
+        let receipt = helper.execute_expect_success(false);
+        let insert_result: Vec<Option<i32>> = receipt.outputs("insert");
+        assert_eq!(insert_result[0], Some(1));
+        helper.insert(1, 0);
+        let receipt = helper.execute_expect_success(false);
+        let insert_result: Vec<Option<i32>> = receipt.outputs("insert");
+        assert_eq!(insert_result[0], Some(100));
+    }
 }
