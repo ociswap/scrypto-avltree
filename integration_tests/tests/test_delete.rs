@@ -295,6 +295,31 @@ mod avltree_delete {
     }
 
     #[test]
+    fn test_delete_not_existing(){
+        let mut helper = TestHelper::new();
+        helper.instantiate_default(false);
+        helper.remove(1);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], None);
+        helper.insert(1,1);
+        helper.execute_expect_success(false);
+        helper.insert(-23213211, 29302381);
+        helper.remove(29302381);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], None);
+        helper.remove(-23213210);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], None);
+        helper.remove(-23213211);
+        let receipt = helper.execute_expect_success(false);
+        let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
+        assert_eq!(remove_res[0], Some(29302381));
+    }
+
+    #[test]
     fn test_shorten_was_calculated_wrong_because_balance_factor_of_delete_was_wrong() {
         // Resulting tree:
         //       5
