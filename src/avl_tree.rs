@@ -1409,7 +1409,7 @@ trait WithinBound<K> {
     fn within_bound(&self, key: &K, direction: Direction) -> bool;
 }
 
-impl<K: Ord + Debug> WithinBound<K> for Bound<&K> {
+impl<K: Ord> WithinBound<K> for Bound<&K> {
     /// Determines if the key lies within the specified boundary.
     ///
     /// - `key`: The key to check against.

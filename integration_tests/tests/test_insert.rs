@@ -158,14 +158,14 @@ mod avltree_insert {
         helper.insert(1, 1);
         let receipt = helper.execute_expect_success(false);
         let insert_result: Vec<Option<i32>> = receipt.outputs("insert");
-        assert_eq!(insert_result[0], None);
+        assert_eq!(insert_result, vec![None]);
         helper.insert(1, 100);
         let receipt = helper.execute_expect_success(false);
         let insert_result: Vec<Option<i32>> = receipt.outputs("insert");
-        assert_eq!(insert_result[0], Some(1));
+        assert_eq!(insert_result, vec![Some(1)]);
         helper.insert(1, 0);
         let receipt = helper.execute_expect_success(false);
         let insert_result: Vec<Option<i32>> = receipt.outputs("insert");
-        assert_eq!(insert_result[0], Some(100));
+        assert_eq!(insert_result, vec![Some(100)]);
     }
 }
