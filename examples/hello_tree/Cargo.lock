@@ -1053,7 +1053,7 @@ dependencies = [
 
 [[package]]
 name = "scrypto_avltree"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "sbor",
  "scrypto",

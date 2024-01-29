@@ -123,7 +123,7 @@ mod avltree_range {
                 (18, 18),
                 (17, 17),
                 (16, 16),
-                (15, 15),
+                (15, 15)
             ]]
         );
 
@@ -142,7 +142,7 @@ mod avltree_range {
                 (19, 19),
                 (18, 18),
                 (17, 17),
-                (16, 16),
+                (16, 16)
             ]]
         );
     }
@@ -165,7 +165,7 @@ mod avltree_range {
                 (21, 21),
                 (22, 22),
                 (23, 23),
-                (24, 24),
+                (24, 24)
             ]]
         );
 
@@ -186,7 +186,7 @@ mod avltree_range {
                 (22, 22),
                 (23, 23),
                 (24, 24),
-                (25, 25),
+                (25, 25)
             ]]
         );
 
@@ -205,9 +205,537 @@ mod avltree_range {
                 (21, 21),
                 (22, 22),
                 (23, 23),
-                (24, 24),
+                (24, 24)
             ]]
         );
+    }
+
+    #[test]
+    fn test_range_lower_bound_not_in_tree() {
+        let mut helper = helper_with_initial_data(vec![10, 12, 14, 16]);
+        let receipt = helper
+            .get_range_both_included(11, 15)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(12, 12), (14, 14)]]);
+        let receipt = helper
+            .get_range_both_excluded(11, 16)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(12, 12), (14, 14)]]);
+        let receipt = helper
+            .get_range_both_included(11, 16)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(12, 12), (14, 14), (16, 16)]]);
+    }
+
+    #[test]
+    fn test_range_only_contains_range_first_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_both_included(9, 10)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(10, 10)]]);
+
+        let receipt = helper
+            .get_range_both_included(9, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(10, 10), (11, 11)]]);
+
+        let receipt = helper
+            .get_range_both_included(10, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(10, 10), (11, 11)]]);
+
+        let receipt = helper
+            .get_range_both_included(10, 12)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(10, 10), (11, 11), (12, 12)]]);
+    }
+
+    #[test]
+    fn test_range_only_contains_range_first_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_both_excluded(9, 10)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_both_excluded(9, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(10, 10)]]);
+
+        let receipt = helper
+            .get_range_both_excluded(10, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_both_excluded(10, 12)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(11, 11)]]);
+    }
+
+    #[test]
+    fn test_range_only_contains_range_last_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_both_included(29, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(29, 29)]]);
+
+        let receipt = helper
+            .get_range_both_included(28, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(28, 28), (29, 29)]]);
+
+        let receipt = helper
+            .get_range_both_included(28, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(28, 28), (29, 29)]]);
+
+        let receipt = helper
+            .get_range_both_included(27, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_included");
+        assert_eq!(output, vec![vec![(27, 27), (28, 28), (29, 29)]]);
+    }
+    #[test]
+    fn test_range_only_contains_range_last_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_both_excluded(29, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_both_excluded(28, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_both_excluded(28, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(29, 29)]]);
+
+        let receipt = helper
+            .get_range_both_excluded(27, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_both_excluded");
+        assert_eq!(output, vec![vec![(28, 28)]]);
+    }
+
+    #[test]
+    fn test_range_mut_only_contains_range_mut_first_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_mut_both_included(9, 10)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_included");
+        assert_eq!(output, vec![vec![(10, 10, None)]]);
+
+        let receipt = helper
+            .get_range_mut_both_included(9, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_included");
+        assert_eq!(output, vec![vec![(10, 10, Some(11)), (11, 11, None)]]);
+
+        let receipt = helper
+            .get_range_mut_both_included(10, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_included");
+        assert_eq!(output, vec![vec![(10, 10, Some(11)), (11, 11, None)]]);
+
+        let receipt = helper
+            .get_range_mut_both_included(10, 12)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_included");
+        assert_eq!(
+            output,
+            vec![vec![(10, 10, Some(11)), (11, 11, Some(12)), (12, 12, None)]]
+        );
+    }
+
+    #[test]
+    fn test_range_mut_only_contains_range_mut_first_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_mut_both_excluded(9, 10)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_mut_both_excluded(9, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_excluded");
+        assert_eq!(output, vec![vec![(10, 10, None)]]);
+
+        let receipt = helper
+            .get_range_mut_both_excluded(10, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_mut_both_excluded(10, 12)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_excluded");
+        assert_eq!(output, vec![vec![(11, 11, None)]]);
+    }
+
+    #[test]
+    fn test_range_mut_only_contains_range_mut_last_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_mut_both_included(29, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_included");
+        assert_eq!(output, vec![vec![(29, 29, None)]]);
+
+        let receipt = helper
+            .get_range_mut_both_included(28, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_included");
+        assert_eq!(output, vec![vec![(28, 28, Some(29)), (29, 29, None)]]);
+
+        let receipt = helper
+            .get_range_mut_both_included(28, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_included");
+        assert_eq!(output, vec![vec![(28, 28, Some(29)), (29, 29, None)]]);
+
+        let receipt = helper
+            .get_range_mut_both_included(27, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_included");
+        assert_eq!(
+            output,
+            vec![vec![(27, 27, Some(28)), (28, 28, Some(29)), (29, 29, None)]]
+        );
+    }
+
+    #[test]
+    fn test_range_mut_only_contains_range_last_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_mut_both_excluded(29, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_mut_both_excluded(28, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_mut_both_excluded(28, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_excluded");
+        assert_eq!(output, vec![vec![(29, 29, None)]]);
+
+        let receipt = helper
+            .get_range_mut_both_excluded(27, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_mut_both_excluded");
+        assert_eq!(output, vec![vec![(28, 28, None)]]);
+    }
+
+    // TODO add same tests for range_back
+
+    #[test]
+    fn test_range_back_only_contains_range_first_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_back_both_included(9, 10)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
+        assert_eq!(output, vec![vec![(10, 10)]]);
+
+        let receipt = helper
+            .get_range_back_both_included(9, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
+        assert_eq!(output, vec![vec![(11, 11), (10, 10)]]);
+
+        let receipt = helper
+            .get_range_back_both_included(10, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
+        assert_eq!(output, vec![vec![(11, 11), (10, 10)]]);
+
+        let receipt = helper
+            .get_range_back_both_included(10, 12)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
+        assert_eq!(output, vec![vec![(12, 12), (11, 11), (10, 10)]]);
+    }
+
+    #[test]
+    fn test_range_back_only_contains_range_first_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_back_both_excluded(9, 10)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_back_both_excluded(9, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
+        assert_eq!(output, vec![vec![(10, 10)]]);
+
+        let receipt = helper
+            .get_range_back_both_excluded(10, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_back_both_excluded(10, 12)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
+        assert_eq!(output, vec![vec![(11, 11)]]);
+    }
+
+    #[test]
+    fn test_range_back_only_contains_range_last_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_back_both_included(29, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
+        assert_eq!(output, vec![vec![(29, 29)]]);
+
+        let receipt = helper
+            .get_range_back_both_included(28, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
+        assert_eq!(output, vec![vec![(29, 29), (28, 28)]]);
+
+        let receipt = helper
+            .get_range_back_both_included(28, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
+        assert_eq!(output, vec![vec![(29, 29), (28, 28)]]);
+
+        let receipt = helper
+            .get_range_back_both_included(27, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_included");
+        assert_eq!(output, vec![vec![(29, 29), (28, 28), (27, 27)]]);
+    }
+
+    #[test]
+    fn test_range_back_only_contains_range_last_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_back_both_excluded(29, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_back_both_excluded(28, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_back_both_excluded(28, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
+        assert_eq!(output, vec![vec![(29, 29)]]);
+
+        let receipt = helper
+            .get_range_back_both_excluded(27, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back_both_excluded");
+        assert_eq!(output, vec![vec![(28, 28)]]);
+    }
+    #[test]
+    fn test_range_back_mut_only_contains_range_first_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_back_mut_both_included(9, 10)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_included");
+        assert_eq!(output, vec![vec![(10, 10, None)]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_included(9, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_included");
+        assert_eq!(output, vec![vec![(11, 11, Some(10)), (10, 10, None)]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_included(10, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_included");
+        assert_eq!(output, vec![vec![(11, 11, Some(10)), (10, 10, None)]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_included(10, 12)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_included");
+        assert_eq!(
+            output,
+            vec![vec![(12, 12, Some(11)), (11, 11, Some(10)), (10, 10, None)]]
+        );
+    }
+
+    #[test]
+    fn test_range_back_mut_only_contains_range_first_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_back_mut_both_excluded(9, 10)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_excluded(9, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_excluded");
+        assert_eq!(output, vec![vec![(10, 10, None)]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_excluded(10, 11)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_excluded(10, 12)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_excluded");
+        assert_eq!(output, vec![vec![(11, 11, None)]]);
+    }
+
+    #[test]
+    fn test_range_back_mut_only_contains_range_last_included() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_back_mut_both_included(29, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_included");
+        assert_eq!(output, vec![vec![(29, 29, None)]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_included(28, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_included");
+        assert_eq!(output, vec![vec![(29, 29, Some(28)), (28, 28, None)]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_included(28, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_included");
+        assert_eq!(output, vec![vec![(29, 29, Some(28)), (28, 28, None)]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_included(27, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_included");
+        assert_eq!(
+            output,
+            vec![vec![(29, 29, Some(28)), (28, 28, Some(27)), (27, 27, None)]]
+        );
+    }
+
+    #[test]
+    fn test_range_back_mut_only_contains_range_last_excluded() {
+        let mut helper = helper_with_initial_data((10..30).collect());
+
+        let receipt = helper
+            .get_range_back_mut_both_excluded(29, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_excluded(28, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_excluded");
+        assert_eq!(output, vec![vec![]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_excluded(28, 30)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_excluded");
+        assert_eq!(output, vec![vec![(29, 29, None)]]);
+
+        let receipt = helper
+            .get_range_back_mut_both_excluded(27, 29)
+            .execute_expect_success(true);
+        let output: Vec<Vec<(i32, i32, Option<i32>)>> =
+            receipt.outputs("get_range_back_mut_both_excluded");
+        assert_eq!(output, vec![vec![(28, 28, None)]]);
     }
 
     #[test]

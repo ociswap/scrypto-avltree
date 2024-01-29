@@ -65,18 +65,20 @@ impl TestHelper {
         self
     }
 
-    pub fn get(&mut self, key: i32) {
+    pub fn get(&mut self, key: i32) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder =
             manifest_builder.call_method(self.tree_address.unwrap(), "get", manifest_args!(key));
         self.env.new_instruction("get", 1, 0);
+        self
     }
 
-    pub fn remove(&mut self, key: i32) {
+    pub fn remove(&mut self, key: i32) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder =
             manifest_builder.call_method(self.tree_address.unwrap(), "remove", manifest_args!(key));
         self.env.new_instruction("remove", 1, 0);
+        self
     }
 
     pub fn check_health(&mut self) -> &mut TestHelper {
@@ -114,6 +116,17 @@ impl TestHelper {
         self.env.new_instruction("update_values_max_iters", 1, 0);
         self
     }
+    pub fn update_value(&mut self, key: i32, value: i32) -> &mut TestHelper {
+        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        self.env.manifest_builder = manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "update_value",
+            manifest_args!(key, value),
+        );
+        self.env.new_instruction("update_value", 1, 0);
+        self
+    }
+
     pub fn update_values(&mut self, start_key: i32, end_key: i32, value: i32) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_method(
@@ -122,6 +135,54 @@ impl TestHelper {
             manifest_args!(start_key, end_key, value),
         );
         self.env.new_instruction("update_values", 1, 0);
+        self
+    }
+
+    pub fn get_range_mut_both_included(&mut self, key1: i32, key2: i32) -> &mut TestHelper {
+        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        self.env.manifest_builder = manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "get_range_mut_both_included",
+            manifest_args!(key1, key2),
+        );
+        self.env
+            .new_instruction("get_range_mut_both_included", 1, 0);
+        self
+    }
+
+    pub fn get_range_mut_both_excluded(&mut self, key1: i32, key2: i32) -> &mut TestHelper {
+        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        self.env.manifest_builder = manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "get_range_mut_both_excluded",
+            manifest_args!(key1, key2),
+        );
+        self.env
+            .new_instruction("get_range_mut_both_excluded", 1, 0);
+        self
+    }
+
+    pub fn get_range_back_mut_both_included(&mut self, key1: i32, key2: i32) -> &mut TestHelper {
+        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        self.env.manifest_builder = manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "get_range_back_mut_both_included",
+            manifest_args!(key1, key2),
+        );
+        self.env
+            .new_instruction("get_range_back_mut_both_included", 1, 0);
+        self
+    }
+
+    pub fn get_range_back_mut_both_excluded(&mut self, key1: i32, key2: i32) -> &mut TestHelper {
+        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        self.env.manifest_builder = manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "get_range_back_mut_both_excluded",
+            manifest_args!(key1, key2),
+        );
+        self.env
+            .new_instruction("get_range_back_mut_both_excluded", 1, 0);
         self
     }
 

@@ -80,28 +80,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         if let Some(mut existing_node) = self.store.get_mut(&key) {
             return Some(mem::replace(&mut existing_node.value, value));
         }
-        let mut parent = self.insert_node_in_empty_spot(&key, value);
-        let mut deepen = true;
-        while deepen && parent.is_some() {
-            let (node, insert_direction) = parent.unwrap();
-            let cached_node = self
-                .get_mut_node(&node)
-                .expect("Parent of insert should exist");
-            parent = cached_node
-                .parent
-                .clone()
-                .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
-            if deepen {
-                deepen = cached_node.balance_factor == 0;
-                cached_node.balance_factor += insert_direction.direction_factor();
-            }
-            if cached_node.balance_factor.abs() == 2 {
-                self.balance(&node, insert_direction);
-            }
-            if !deepen {
-                break;
-            }
-        }
+        let parent = self.insert_node_in_empty_spot(&key, value);
+        self.balance_after_insert(parent);
         self.flush_cache();
         None
     }
@@ -312,7 +292,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         end_bound: Bound<&K>,
         direction: Direction,
     ) -> NodeIterator<K, V> {
-        let start = self.range_get_start(start_bound, direction);
+        let start = self.range_get_start(start_bound, end_bound, direction);
         NodeIterator {
             current: start,
             direction,
@@ -328,7 +308,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
         end_bound: Bound<&K>,
         direction: Direction,
     ) -> NodeIteratorMut<K, V> {
-        let start = self.range_get_start(start_bound, direction);
+        let start = self.range_get_start(start_bound, end_bound, direction);
         NodeIteratorMut {
             current: start,
             direction,
@@ -338,21 +318,39 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     }
 
     /// Get the first node that is inside the range. If the bound is in the tree O(1), otherwise O(log n).
-    fn range_get_start(&self, start_bound: Bound<&K>, direction: Direction) -> Option<K> {
-        let start = match start_bound {
-            Bound::Included(k) => self.store.get(k).map(|n| n.key.clone()),
-            Bound::Excluded(k) => self.store.get(k).map(|n| n.next(direction)).flatten(),
+    /// Parameters:
+    /// - start_bound: The start bound of the range.
+    /// - end_bound: The end bound of the range.
+    /// - direction: The direction of the iterator.
+    ///
+    /// Returns:
+    /// - Some(K): The key of the first node that is inside the range.
+    fn range_get_start(
+        &self,
+        start_bound: Bound<&K>,
+        end_bound: Bound<&K>,
+        direction: Direction,
+    ) -> Option<K> {
+        // Get starting node, if it is inside the store we can derive the start in O(1).
+        // If self.store.get(k) is Some, the bound is contained inside the store. So the start is either k or the next node.
+        let start: Option<Option<K>> = match start_bound {
+            Bound::Included(k) => self.store.get(k).map(|n| Some(n.key.clone())),
+            Bound::Excluded(k) => self.store.get(k).map(|n| n.next(direction)),
             Bound::Unbounded => None,
         };
 
-        let start = start.or_else(|| self.find_first_node(start_bound, direction));
+        // When start is None we could not find the start bound directly in the store and we have to search in
+        // the tree with find_first_node.
+        // Afterwards we check if the starting node is inside the range.
         start
+            .unwrap_or_else(|| self.find_first_node(start_bound, direction))
+            .filter(|s| end_bound.within_bound(&s, direction))
     }
 
     /// Finds the initial node within the specified range based on the given direction.
     /// Iteratively traverses the tree and returns the most left or right node in the tree within the range.
     /// The direction parameter determines if it is left or right.
-    fn find_first_node(&self, lower_bound: Bound<&K>, direction: Direction) -> Option<K> {
+    fn find_first_node(&self, start_bound: Bound<&K>, iterator_direction: Direction) -> Option<K> {
         let mut current = self.root.clone();
         let mut result = None;
         while current.is_some() {
@@ -360,13 +358,15 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 .store
                 .get(&current.clone().unwrap())
                 .expect("Node of subtree should exist.");
-            match lower_bound.within_bound(&node.key, direction) {
+            match start_bound.within_bound(&node.key, iterator_direction.opposite()) {
                 true => {
-                    current = node.get_child(direction).clone();
+                    result = current.clone();
+                    // Current node is inside the range -> go to the boarder of the range
+                    current = node.get_child(iterator_direction.opposite()).clone();
                 }
                 false => {
-                    result = current.clone();
-                    current = node.get_child(direction.opposite()).clone();
+                    // Current node is outside the range -> go towards the range.
+                    current = node.get_child(iterator_direction).clone();
                 }
             }
         }
@@ -409,6 +409,35 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 self.add_node(None, &key, value, None, None);
                 self.root = Some(key.clone());
                 None
+            }
+        }
+    }
+
+    /// Balance tree after inserting a node
+    /// This function goes up the tree from the inserted node and balances a level if it is
+    /// necessary.
+    ///
+    /// parent_info: Tuple of the node above inserted node and direction of parent
+    fn balance_after_insert(&mut self, mut parent_info: Option<(K, Direction)>) {
+        let mut deepen = true;
+        while deepen && parent_info.is_some() {
+            let (node, insert_direction) = parent_info.unwrap();
+            let cached_node = self
+                .get_mut_node(&node)
+                .expect("Parent of insert should exist");
+            parent_info = cached_node
+                .parent
+                .clone()
+                .zip(cached_node.direction_to_parent().map(|d| d.opposite()));
+            if deepen {
+                deepen = cached_node.balance_factor == 0;
+                cached_node.balance_factor += insert_direction.direction_factor();
+            }
+            if cached_node.balance_factor.abs() == 2 {
+                self.balance(&node, insert_direction);
+            }
+            if !deepen {
+                break;
             }
         }
     }
@@ -1394,18 +1423,20 @@ impl<K: Ord> WithinBound<K> for Bound<&K> {
     /// Determines if the key lies within the specified boundary.
     ///
     /// - `key`: The key to check against.
-    /// - `direction`: Direction to check the boundary against.
-    fn within_bound(&self, key: &K, direction: Direction) -> bool {
-        match direction {
+    /// - `direction`: Defines if it is a left or right boundary.
+    ///                So for example if the bound: Exclude(3) and the direction is right,
+    ///                then the key 3 is not within the bound, and key 2 is within the bound.
+    fn within_bound(&self, key: &K, direction_to_bound_from_within_range: Direction) -> bool {
+        match direction_to_bound_from_within_range {
             Direction::Left => match self {
                 Bound::Unbounded => true,
-                Bound::Included(other) => key >= other,
-                Bound::Excluded(other) => key > other,
+                Bound::Included(bound) => key >= bound,
+                Bound::Excluded(bound) => key > bound,
             },
             Direction::Right => match self {
                 Bound::Unbounded => true,
-                Bound::Included(other) => key <= other,
-                Bound::Excluded(other) => key < other,
+                Bound::Included(bound) => key <= bound,
+                Bound::Excluded(bound) => key < bound,
             },
         }
     }
