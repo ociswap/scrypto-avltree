@@ -252,6 +252,7 @@ mod avltree_delete {
         println!("remove: {:?}", remove);
         helper.get_range_success(i32::MIN, i32::MAX, should_be_in_tree, true);
     }
+    
     #[test]
     fn test_delete_gives_correct_return_value() {
         let mut helper = TestHelper::new();
@@ -264,24 +265,24 @@ mod avltree_delete {
         helper.remove(1);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], Some(100));
+        assert_eq!(remove_res, vec![Some(100)]);
         helper.remove(1);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], None);
+        assert_eq!(remove_res, vec![None]);
         helper.remove(0);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], Some(1));
+        assert_eq!(remove_res, vec![Some(1)]);
         helper.remove(0);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], None);
+        assert_eq!(remove_res, vec![None]);
         helper.insert(1, 1000);
         helper.remove(1);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], Some(1000));
+        assert_eq!(remove_res, vec![Some(1000)]);
     }
 
     #[test]
@@ -291,22 +292,22 @@ mod avltree_delete {
         helper.remove(1);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], None);
+        assert_eq!(remove_res, vec![None]);
         helper.insert(1, 1);
         helper.execute_expect_success(false);
         helper.insert(-23213211, 29302381);
         helper.remove(29302381);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], None);
+        assert_eq!(remove_res, vec![None]);
         helper.remove(-23213210);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], None);
+        assert_eq!(remove_res, vec![None]);
         helper.remove(-23213211);
         let receipt = helper.execute_expect_success(false);
         let remove_res: Vec<Option<i32>> = receipt.outputs("remove");
-        assert_eq!(remove_res[0], Some(29302381));
+        assert_eq!(remove_res, vec![Some(29302381)]);
     }
 
     #[test]
