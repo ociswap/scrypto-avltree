@@ -7,8 +7,6 @@ use scrypto_avltree::avl_tree_health::{check_health, print_tree_nice};
 
 #[blueprint]
 mod avl_test_wrapper {
-    use std::f32::consts::E;
-
     struct AvlTestWrapper {
         avl_tree: AvlTree<i32, i32>,
     }
