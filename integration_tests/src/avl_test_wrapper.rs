@@ -94,6 +94,13 @@ mod avl_test_wrapper {
             });
             result
         }
+        pub fn get_range_mut_both_excluded(
+            &mut self,
+            key1: i32,
+            key2: i32,
+        ) -> Vec<(i32, i32, Option<i32>)> {
+            self.range_mut_with_range_bounds((Excluded(key1), Excluded(key2)))
+        }
         pub fn get_range_mut_both_included(
             &mut self,
             key1: i32,
