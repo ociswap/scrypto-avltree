@@ -54,15 +54,16 @@ let value = tree.get_mut(&dec!(1));
 ### Range
 To iterate over the tree you can use the `range`, `range_back` methods.
 It accepts a range of keys and returns an iterator over the key value pairs:
+The iterator implements the standard rust iterator: it provides operations like map, for_each, fold, etc.
 The range is default in rust and can have inclusive or exclusive bounds.
 ```rust
-for (key, value) in tree.range(dec!(1)..dec!(10)) {
+for (key, value, next_key) in tree.range(dec!(1)..dec!(10)) {
     info!("key: {}, value: {}", key, value);
 }
 ```
 gives you all values for the keys between 1 and 10 ascending and excluding 10.
 ```rust
-for (key, value) in tree.range_back(Excluded(dec!(1)), Included(dec!(10))) {
+for (key, value, next_key) in tree.range_back(Excluded(dec!(1)), Included(dec!(10))) {
     info!("key: {}, value: {}", key, value);
 }
 ```
@@ -72,7 +73,7 @@ gives you all values for the keys between 1 and 10 descending and excluding 1.
 To iterate over the tree and mutate the values you can use the `range_mut`, `range_back_mut` methods.
 It accepts a range of keys and returns an iterator that can be used with the for_each callback
 ```rust
-tree.range_mut(dec!(1)..dec!(10)).for_each(|value| {
+tree.range_mut(dec!(1)..dec!(10)).for_each(|(key, value, next_key): (&K, &mut V, Option<K>)| {
     *value=String::from("mutated");
 }
 for (key, value) in tree.range(dec!(1)..dec!(10)) {
