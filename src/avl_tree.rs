@@ -115,8 +115,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     ///
     /// Tree is initialized with all integers from 0 to 100 and value = key.
     /// ```
-    /// for i in tree.range(10..20) {
-    ///     println!("{}", i);
+    /// for (k: K, v: V, next_key: Option<K>) in tree.range(10..20) {
+    ///     println!("{}", k);
     /// }
     /// ```
     ///
@@ -127,8 +127,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     ///
     /// The end can also be included either with Included(end) or:
     /// ```rust
-    /// for i in tree.range(10..=20) {
-    ///     println!("{}", i);
+    /// for (k: K, v: V, next_key: Option<K>) in tree.range(10..=20) {
+    ///     println!("{}", k);
     /// }
     /// ```
     ///
@@ -136,9 +136,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
     /// ```
-    pub fn range<R>(&self, range: R) -> NodeIterator<K, V>
-    where
-        R: RangeBounds<K>,
+    /// The NodeIterator can also be called with for_each or for_each_node
+    pub fn range<R: RangeBounds<K>>(&self, range: R) -> NodeIterator<K, V>
     {
         return self.range_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
@@ -149,8 +148,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     ///
     /// Tree is initialized with all integers from 0 to 100.
     /// ```
-    /// for i in tree.range_back(10..20) {
-    ///     println!("{}", i);
+    /// for (k: K, v: V, next_key: Option<K>) in tree.range_back(10..=20) {
+    ///     println!("{}", k);
     /// }
     /// ```
     ///
@@ -163,8 +162,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     ///
     /// E.g. tree is initialized with all integers from 0 to 100.
     /// ```rust
-    /// for i in tree.range_back((Excluded(10),Included(20))) {
-    ///     println!("{}", i);
+    /// for (k: K, v: V, next_key: Option<K>) in tree.range_back(Excluded(10),Included(20)) {
+    ///     println!("{}", k);
     /// }
     /// ````
     ///
@@ -172,9 +171,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// 20, 19, 18, 17, 16, 15, 14, 13, 12, 11
     /// ```
-    pub fn range_back<R>(&self, range: R) -> NodeIterator<K, V>
-    where
-        R: RangeBounds<K>,
+    pub fn range_back<R: RangeBounds<K>>(&self, range: R) -> NodeIterator<K, V>
     {
         return self.range_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
@@ -187,8 +184,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// let mut idx = 0
     /// tree.range_mut(10..20).for_each(|x| {*x = idx; idx += 1;} );
-    /// for i in tree.range(0..30) {
-    ///     println!("{}", i);
+    /// for (k, _, _) in tree.range(0..30) {
+    ///     println!("{}", k);
     /// }
     /// ```
     ///
@@ -197,9 +194,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
     /// ```
-    pub fn range_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V>
-    where
-        R: RangeBounds<K> + Debug,
+    pub fn range_mut<R: RangeBounds<K>>(&mut self, range: R) -> NodeIteratorMut<K, V>
     {
         return self.range_mut_internal(range.start_bound(), range.end_bound(), Direction::Right);
     }
@@ -212,8 +207,8 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// let mut idx = 0;
     /// tree.range_back_mut(10..15).for_each(|x| {*x = idx; idx += 1;});
-    /// for i in tree.range(0..30) {
-    ///     println!("{}", i);
+    /// for (k, _, _) in tree.range(0..30) {
+    ///     println!("{}", k);
     /// }
     /// ```
     ///
@@ -221,9 +216,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
     /// ```
     /// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 3, 2, 1, 0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
     /// ```
-    pub fn range_back_mut<R>(&mut self, range: R) -> NodeIteratorMut<K, V>
-    where
-        R: RangeBounds<K>,
+    pub fn range_back_mut<R: RangeBounds<K>>(&mut self, range: R) -> NodeIteratorMut<K, V>
     {
         return self.range_mut_internal(range.end_bound(), range.start_bound(), Direction::Left);
     }
@@ -1347,7 +1340,7 @@ impl<K: ScryptoSbor + Clone, V: ScryptoSbor> NodeIterator<'_, K, V> {
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + Clone> Iterator
     for NodeIterator<'a, K, V>
 {
-    type Item = (K, V);
+    type Item = (K, V, Option<K>);
 
     /// Advances the iterator to the next node and returns the value.
     ///
@@ -1366,8 +1359,12 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + C
             Some(true) => next_key,
             _ => None,
         };
-        Some((current_key, node.value.clone()))
+        Some((current_key, node.value.clone(), self.current.clone()))
     }
+}
+pub enum IterMutControl {
+    Continue,
+    Break,
 }
 
 /// Mutable node iterator that implements for each
@@ -1378,10 +1375,6 @@ pub struct NodeIteratorMut<'a, K: ScryptoSbor, V: ScryptoSbor> {
     store: &'a mut KeyValueStore<K, Node<K, V>>,
 }
 
-pub enum IterMutControl {
-    Continue,
-    Break,
-}
 
 impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + Clone>
     NodeIteratorMut<'a, K, V>
@@ -1395,7 +1388,7 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + C
     ///
     /// # Parameters
     /// - `function`: The function to call on each value.
-    pub fn for_each(&mut self, mut function: impl FnMut(&K, &mut V, Option<K>) -> IterMutControl) {
+    pub fn for_each(&mut self, mut function: impl FnMut((&K, &mut V, Option<K>)) -> IterMutControl) {
         while let Some(key) = self.current.clone() {
             let mut node = self.store.get_mut(&key).expect("Node not found");
             let next = node.next(self.direction);
@@ -1406,9 +1399,8 @@ impl<'a, K: ScryptoSbor + Clone + Ord + Eq + Display + Debug, V: ScryptoSbor + C
                 Some(true) => next,
                 _ => None,
             };
-            let mut value: V = node.value.clone();
-            match function(&key, &mut value, self.current.clone()) {
-                IterMutControl::Continue => node.value = value,
+            match function((&key, &mut node.value, self.current.clone())) {
+                IterMutControl::Continue => (),
                 IterMutControl::Break => break,
             }
         }

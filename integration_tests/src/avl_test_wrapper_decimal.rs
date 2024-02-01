@@ -4,7 +4,11 @@ use std::ops::Bound::{Excluded, Included};
 use scrypto_avltree::avl_tree::AvlTree;
 use scrypto_avltree::avl_tree::IterMutControl;
 use scrypto_avltree::avl_tree_health::{check_health, print_tree_nice};
+use std::ops::RangeBounds;
 
+fn key_value(tuple: (Decimal, Decimal, Option<Decimal>)) -> (Decimal, Decimal) {
+    (tuple.0.clone(), tuple.1.clone())
+}
 #[blueprint]
 mod avl_test_wrapper_decimal {
     struct AvlTestWrapperDecimal {
@@ -38,11 +42,7 @@ mod avl_test_wrapper_decimal {
             key1: Decimal,
             key2: Decimal,
         ) -> Vec<(Decimal, Decimal)> {
-            let mut result = Vec::new();
-            for node in self.avl_tree.range_back((Included(key1), Included(key2))) {
-                result.push(node.clone());
-            }
-            result
+            self.range_back_with_range_bounds((Included(key1), Included(key2)))
         }
 
         pub fn get_range_back_both_excluded(
@@ -50,28 +50,15 @@ mod avl_test_wrapper_decimal {
             key1: Decimal,
             key2: Decimal,
         ) -> Vec<(Decimal, Decimal)> {
-            let mut result = Vec::new();
-            for node in self.avl_tree.range_back((Excluded(key1), Excluded(key2))) {
-                result.push(node.clone());
-            }
-            result
+            self.range_back_with_range_bounds((Excluded(key1), Excluded(key2)))
         }
 
         pub fn get_range_back(&mut self, key1: Decimal, key2: Decimal) -> Vec<(Decimal, Decimal)> {
-            let mut result = Vec::new();
-            for node in self.avl_tree.range_back((Included(key1), Excluded(key2))) {
-                result.push(node.clone());
-            }
-            result
+            self.range_back_with_range_bounds(key1..key2)
         }
 
         pub fn get_range(&mut self, key1: Decimal, key2: Decimal) -> Vec<(Decimal, Decimal)> {
-            let mut result = Vec::new();
-            // Standard range is Included(start) and Excluded(end)
-            for node in self.avl_tree.range(key1..key2) {
-                result.push(node.clone());
-            }
-            result
+            self.range_with_range_bounds(key1..key2)
         }
 
         pub fn get_range_both_included(
@@ -79,11 +66,25 @@ mod avl_test_wrapper_decimal {
             key1: Decimal,
             key2: Decimal,
         ) -> Vec<(Decimal, Decimal)> {
-            let mut result = Vec::new();
-            for node in self.avl_tree.range((Included(key1), Included(key2))) {
-                result.push(node.clone());
-            }
-            result
+            self.range_with_range_bounds((Included(key1), Included(key2)))
+        }
+        fn range_back_with_range_bounds<R: RangeBounds<Decimal>>(
+            &mut self,
+            range: R,
+        ) -> Vec<(Decimal, Decimal)> {
+            self.avl_tree
+                .range_back(range)
+                .map(key_value)
+                .collect::<Vec<_>>()
+        }
+        fn range_with_range_bounds<R: RangeBounds<Decimal>>(
+            &mut self,
+            range: R,
+        ) -> Vec<(Decimal, Decimal)> {
+            self.avl_tree
+                .range(range)
+                .map(key_value)
+                .collect::<Vec<_>>()
         }
 
         pub fn get_range_both_excluded(
@@ -91,17 +92,13 @@ mod avl_test_wrapper_decimal {
             key1: Decimal,
             key2: Decimal,
         ) -> Vec<(Decimal, Decimal)> {
-            let mut result = Vec::new();
-            for node in self.avl_tree.range((Excluded(key1), Excluded(key2))) {
-                result.push(node.clone());
-            }
-            result
+            self.range_with_range_bounds((Excluded(key1), Excluded(key2)))
         }
 
         pub fn update_values(&mut self, start_key: Decimal, end_key: Decimal, new_value: Decimal) {
             self.avl_tree
                 .range_mut(start_key..end_key)
-                .for_each(|_, value, _| {
+                .for_each(|(_, value, _): (&Decimal, &mut Decimal, Option<Decimal>)| {
                     *value = new_value.clone();
                     return IterMutControl::Continue;
                 });
@@ -115,7 +112,7 @@ mod avl_test_wrapper_decimal {
         ) {
             self.avl_tree
                 .range_back_mut(start_key..end_key)
-                .for_each(|_, value, _| {
+                .for_each(|(_, value, _): (&Decimal, &mut Decimal, Option<Decimal>)| {
                     *value = new_value.clone();
                     return IterMutControl::Continue;
                 });
