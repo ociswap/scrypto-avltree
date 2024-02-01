@@ -41,6 +41,9 @@ mod hello_tree {
                 // "are" and "you" are deleted, and "doing" is not in range
                 info!("{} ", value);
             }
+            self.tree.range_mut(dec!(1)..dec!(5)).for_each(|(key, value, next_key)| {
+                info!("{} ", value);
+            });
             self.tree.range(dec!(1)..dec!(5)).map(|(key, _v, next_key)| next_key.map(|next_key| key+ next_key)).for_each(|(new_value)| {
                 info!("{} ", new_value);
             });

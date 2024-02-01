@@ -7,8 +7,8 @@ description = "AvlTree implementation in Scrypto with KVStore"
 repository = "https://github.com/ociswap/scrypto-avltree"
 
 [dependencies]
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.0" }
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.0" }
+sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
 
 [profile.dev]
 opt-level = 'z'        # Optimize for size.
