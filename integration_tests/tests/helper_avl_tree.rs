@@ -288,6 +288,44 @@ pub fn to_key_values(vector: &Vec<i32>) -> Vec<(i32, i32)> {
         .map(|(a, b)| (*a, *b))
         .collect()
 }
+pub enum Function {
+    Insert(i32),
+    Delete(i32)
+}
+pub fn test_with_functions(mut initial_vector: Vec<i32>, functions: Vec<Function>) {
+    let mut helper = TestHelper::new();
+    helper.instantiate_default(false);
+    for i in initial_vector.iter() {
+        println!("inserting {:?}", i);
+        helper.insert(*i, *i);
+        helper.check_health();
+        helper.execute_expect_success(true);
+    }
+
+    initial_vector.sort();
+    let mut key_values: Vec<(i32, i32)> = to_key_values(&initial_vector);
+
+    helper.get_range_success(i32::MIN, i32::MAX, key_values.clone(), true);
+
+    for function in functions.iter() {
+        match function {
+            Function::Insert(i) => {
+                helper.insert(*i, *i);
+                helper.check_health();
+                helper.execute_expect_success(true);
+                key_values.push((*i, *i));
+                key_values.sort();
+            }
+            Function::Delete(i) => {
+                helper.remove(*i);
+                helper.check_health();
+                helper.execute_expect_success(true);
+                key_values.retain(|(k, _)| k != i);
+            }
+        }
+    }
+    helper.get_range_success(i32::MIN, i32::MAX, key_values, true);
+}
 
 pub fn test_range(mut vector: Vec<i32>, to_delete: Vec<i32>) {
     println!("to_delete: {:?}", to_delete);
