@@ -288,9 +288,10 @@ pub fn to_key_values(vector: &Vec<i32>) -> Vec<(i32, i32)> {
         .map(|(a, b)| (*a, *b))
         .collect()
 }
+#[derive(Debug)]
 pub enum Function {
     Insert(i32),
-    Delete(i32)
+    Delete(i32),
 }
 pub fn test_with_functions(mut initial_vector: Vec<i32>, functions: Vec<Function>) {
     let mut helper = TestHelper::new();

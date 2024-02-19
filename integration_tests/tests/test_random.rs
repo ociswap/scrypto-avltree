@@ -1,11 +1,11 @@
 mod helper_avl_tree;
 
 #[cfg(test)]
-mod avltree_random{
+mod avltree_random {
     use super::*;
     use helper_avl_tree::*;
-    use scrypto::prelude::*;
     use rand::prelude::*;
+    use scrypto::prelude::*;
 
     #[test]
     fn test_random() {
@@ -30,7 +30,10 @@ mod avltree_random{
             let mut rng = rand::thread_rng();
             let mut vector: Vec<i32> = (0..vector_size).collect();
             vector.shuffle(&mut rng);
-            let mut functions: Vec<Function> = (0..vector_size).map(|i| vec![Function::Insert(i),Function::Delete(i)]).flatten().collect();
+            let mut functions: Vec<Function> = (0..vector_size)
+                .map(|i| vec![Function::Insert(i), Function::Delete(i)])
+                .flatten()
+                .collect();
             functions.shuffle(&mut rng);
             test_with_functions(vector, functions);
         }
