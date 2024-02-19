@@ -9,10 +9,12 @@ mod avltree_random{
 
     #[test]
     fn test_random() {
-        for i in 0..10 {
+        let iterations = 10;
+        let vector_size = 100;
+        for i in 0..iterations {
             println!("Test {}", i);
             let mut rng = rand::thread_rng();
-            let mut vector: Vec<i32> = (0..100).collect();
+            let mut vector: Vec<i32> = (0..vector_size).collect();
             vector.shuffle(&mut rng);
             let mut to_delete = vector.clone();
             to_delete.shuffle(&mut rng);
@@ -21,16 +23,16 @@ mod avltree_random{
     }
     #[test]
     fn test_with_random_function_order() {
-        for i in 0..10 {
+        let iterations = 10;
+        let vector_size = 100;
+        for i in 0..iterations {
             println!("Test {}", i);
             let mut rng = rand::thread_rng();
-            let mut vector: Vec<i32> = (0..100).collect();
+            let mut vector: Vec<i32> = (0..vector_size).collect();
             vector.shuffle(&mut rng);
-            let mut to_delete = vector.clone();
-            to_delete.shuffle(&mut rng);
-            let mut functions: Vec<Function> = Vec::new();
+            let mut functions: Vec<Function> = (0..vector_size).map(|i| vec![Function::Insert(i),Function::Delete(i)]).flatten().collect();
             functions.shuffle(&mut rng);
-            // test_with_functions(vector, to_delete, functions);
+            test_with_functions(vector, functions);
         }
     }
 }
