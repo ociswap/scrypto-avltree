@@ -149,7 +149,7 @@ mod avltree_insert {
             .zip(vec![0; 20].iter())
             .map(|(a, b)| (*a, *b))
             .collect();
-        helper.get_range_success(i32::MIN, i32::MAX, output_expected, true);
+        helper.get_range_success(i32::MIN, i32::MAX, &output_expected, true);
     }
     #[test]
     fn test_insert_gives_correct_return_value() {

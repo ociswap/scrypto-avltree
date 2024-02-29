@@ -426,6 +426,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
                 deepen = cached_node.balance_factor == 0;
                 cached_node.balance_factor += insert_direction.direction_factor();
             }
+            assert!(cached_node.balance_factor.abs() < 3);
             if cached_node.balance_factor.abs() == 2 {
                 self.balance(&node, insert_direction);
             }
@@ -553,6 +554,7 @@ impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor 
             };
             let mut new_root_balance_factor = None;
 
+            assert!(current_node_balance_factor.abs() < 3);
             if current_node_balance_factor.abs() == 2 {
                 new_root_balance_factor = Some(self.balance(&current_node, child_dir.clone()));
             }

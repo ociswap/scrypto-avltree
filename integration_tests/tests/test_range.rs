@@ -23,13 +23,13 @@ mod avltree_range {
     #[test]
     fn range_out_of_bounds() {
         let mut helper = helper_with_initial_data((1..5).collect());
-        helper.get_range_success(6, 10, vec![], true);
+        helper.get_range_success(6, 10, &vec![], true);
     }
 
     #[test]
     fn start_included_end_excluded() {
         let mut helper = helper_with_initial_data((1..5).collect());
-        helper.get_range_success(1, 5, vec![(1, 1), (2, 2), (3, 3), (4, 4)], true);
+        helper.get_range_success(1, 5, &vec![(1, 1), (2, 2), (3, 3), (4, 4)], true);
     }
 
     #[test]
@@ -40,7 +40,7 @@ mod avltree_range {
         helper.get_range_success(
             i32::MIN,
             i32::MAX,
-            vec![
+            &vec![
                 (11, 11),
                 (12, 12),
                 (13, 13),
@@ -747,7 +747,7 @@ mod avltree_range {
         helper.get_range_success(
             15,
             25,
-            vec![
+            &vec![
                 (15, -1),
                 (16, -1),
                 (17, -1),
@@ -764,7 +764,7 @@ mod avltree_range {
         helper.get_range_success(
             25,
             30,
-            vec![(25, 25), (26, 26), (27, 27), (28, 28), (29, 29)],
+            &vec![(25, 25), (26, 26), (27, 27), (28, 28), (29, 29)],
             true,
         );
     }
@@ -778,7 +778,7 @@ mod avltree_range {
         helper.get_range_success(
             15,
             25,
-            vec![
+            &vec![
                 (15, -1),
                 (16, -1),
                 (17, -1),
@@ -795,7 +795,7 @@ mod avltree_range {
         helper.get_range_success(
             25,
             30,
-            vec![(25, 25), (26, 26), (27, 27), (28, 28), (29, 29)],
+            &vec![(25, 25), (26, 26), (27, 27), (28, 28), (29, 29)],
             true,
         );
     }
