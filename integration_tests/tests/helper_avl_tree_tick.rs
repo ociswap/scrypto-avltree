@@ -364,7 +364,7 @@ pub fn write_costs_csv_test_range(vector: Vec<i32>) {
     let base_cost = base_receipt.execution_receipt.fee_summary.total_cost();
 
     // let csv_path = "../../../projects/plot_costs/batched_costs.csv";
-    let csv_path = "plot_costs/insert_costs.csv";
+    let csv_path = "plot_costs/insert_delete_costs.csv";
     fs::create_dir("plot_costs").unwrap_or_default();
     let mut wtr = csv::Writer::from_path(csv_path).unwrap();
     let tick: Tick = Tick {
