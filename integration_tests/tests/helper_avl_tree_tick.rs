@@ -2,9 +2,23 @@ use lazy_static::lazy_static;
 use radix_engine::blueprints::package::PackageDefinition;
 use scrypto::prelude::*;
 use scrypto_testenv::*;
+use std::fs;
 use std::mem;
 use std::time::SystemTime;
 use transaction::builder::ManifestBuilder;
+
+// #[derive(Clone, Debug, ScryptoSbor, PartialEq, Eq)]
+// struct Example {
+// }
+
+#[derive(Clone, Debug, ScryptoSbor, PartialEq, Eq)]
+pub struct Tick {
+    pub delta_liquidity: PreciseDecimal,
+    pub total_liquidity: PreciseDecimal,
+    pub price_sqrt: PreciseDecimal,
+    pub x_fee_outside: PreciseDecimal,
+    pub y_fee_outside: PreciseDecimal,
+}
 
 lazy_static! {
     static ref PACKAGE: (Vec<u8>, PackageDefinition) = compile_package(this_package!());
@@ -45,7 +59,7 @@ impl TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
         self.env.manifest_builder = manifest_builder.call_function(
             self.env.package_address("test"),
-            "AvlTestWrapper",
+            "AvlTestWrapperTick",
             "instantiate",
             manifest_args!(),
         );
@@ -64,23 +78,30 @@ impl TestHelper {
         self.tree_address = Some(pool_address);
         receipt
     }
-    pub fn batch_insert(&mut self, keys: Vec<i32>, values: Vec<i32>) -> &mut TestHelper {
-        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
-        self.env.manifest_builder = manifest_builder.call_method(
-            self.tree_address.unwrap(),
-            "batch_insert",
-            manifest_args!(keys, values),
-        );
-        self.env.new_instruction("batch_insert", 1, 0);
-        self
-    }
+    // pub fn batch_insert(&mut self, keys: Vec<i32>, values: Vec<Tick>) -> &mut TestHelper {
+    //     let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+    //     self.env.manifest_builder = manifest_builder.call_method(
+    //         self.tree_address.unwrap(),
+    //         "batch_insert",
+    //         manifest_args!(keys, values),
+    //     );
+    //     self.env.new_instruction("batch_insert", 1, 0);
+    //     self
+    // }
 
-    pub fn insert(&mut self, key: i32, value: i32) -> &mut TestHelper {
+    pub fn insert(&mut self, key: i32, value: Tick) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        let transfer_value = (
+            value.delta_liquidity,
+            value.total_liquidity,
+            value.price_sqrt,
+            value.x_fee_outside,
+            value.y_fee_outside,
+        );
         self.env.manifest_builder = manifest_builder.call_method(
             self.tree_address.unwrap(),
             "insert",
-            manifest_args!(key, value),
+            manifest_args!(key, transfer_value),
         );
         self.env.new_instruction("insert", 1, 0);
         self
@@ -137,27 +158,34 @@ impl TestHelper {
         self.env.new_instruction("update_values_max_iters", 1, 0);
         self
     }
-    pub fn update_value(&mut self, key: i32, value: i32) -> &mut TestHelper {
+    pub fn update_value(&mut self, key: i32, value: Tick) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        let transfer_value = (
+            value.delta_liquidity,
+            value.total_liquidity,
+            value.price_sqrt,
+            value.x_fee_outside,
+            value.y_fee_outside,
+        );
         self.env.manifest_builder = manifest_builder.call_method(
             self.tree_address.unwrap(),
             "update_value",
-            manifest_args!(key, value),
+            manifest_args!(key, transfer_value),
         );
         self.env.new_instruction("update_value", 1, 0);
         self
     }
 
-    pub fn update_values(&mut self, start_key: i32, end_key: i32, value: i32) -> &mut TestHelper {
-        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
-        self.env.manifest_builder = manifest_builder.call_method(
-            self.tree_address.unwrap(),
-            "update_values",
-            manifest_args!(start_key, end_key, value),
-        );
-        self.env.new_instruction("update_values", 1, 0);
-        self
-    }
+    // pub fn update_values(&mut self, start_key: i32, end_key: i32, value: Tick) -> &mut TestHelper {
+    //     let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+    //     self.env.manifest_builder = manifest_builder.call_method(
+    //         self.tree_address.unwrap(),
+    //         "update_values",
+    //         manifest_args!(start_key, end_key, value),
+    //     );
+    //     self.env.new_instruction("update_values", 1, 0);
+    //     self
+    // }
 
     pub fn get_range_mut_both_included(&mut self, key1: i32, key2: i32) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
@@ -278,11 +306,11 @@ impl TestHelper {
         &mut self,
         key1: i32,
         key2: i32,
-        output_expected: &Vec<(i32, i32)>,
+        output_expected: &Vec<(i32, Tick)>,
         verbose: bool,
-    ) -> Result<Vec<(i32, i32)>, String> {
+    ) -> Result<Vec<(i32, Tick)>, String> {
         let receipt = self.get_range(key1, key2).execute_success(verbose)?;
-        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range");
+        let output: Vec<Vec<(i32, Tick)>> = receipt.outputs("get_range");
 
         if output.len() == 0 {
             return Err(format!(
@@ -304,9 +332,9 @@ impl TestHelper {
         &mut self,
         key1: i32,
         key2: i32,
-        output_expected: &Vec<(i32, i32)>,
+        output_expected: &Vec<(i32, Tick)>,
         verbose: bool,
-    ) -> Vec<(i32, i32)> {
+    ) -> Vec<(i32, Tick)> {
         let result = self.get_range_safe(key1, key2, output_expected, verbose);
         if let Err(e) = result {
             panic!("{:?}", e);
@@ -318,164 +346,61 @@ impl TestHelper {
         &mut self,
         key1: i32,
         key2: i32,
-        output_expected: Vec<(i32, i32)>,
+        output_expected: Vec<(i32, Tick)>,
         verbose: bool,
     ) {
         let receipt = self
             .get_range_back(key1, key2)
             .execute_expect_success(verbose);
-        let output: Vec<Vec<(i32, i32)>> = receipt.outputs("get_range_back");
+        let output: Vec<Vec<(i32, Tick)>> = receipt.outputs("get_range_back");
         assert_eq!(output, vec![output_expected]);
     }
 }
 
-pub fn to_key_values(vector: &Vec<i32>) -> Vec<(i32, i32)> {
-    vector
-        .iter()
-        .zip(vector.iter())
-        .map(|(a, b)| (*a, *b))
-        .collect()
-}
-#[derive(Debug)]
-pub enum Function {
-    Insert(i32),
-    Delete(i32),
-}
-pub fn test_with_functions(
-    initial_vector: &Vec<i32>,
-    functions: &Vec<Function>,
-) -> Result<(), String> {
-    let mut helper = TestHelper::new();
-    helper.instantiate_default(false);
-    let batch_size = 50;
-    let batched_vector: Vec<Vec<i32>> = initial_vector
-        .chunks(batch_size)
-        .map(|x| x.to_vec())
-        .collect();
-    for i in batched_vector.iter() {
-        println!("inserting {:?}", i);
-        helper
-            .batch_insert(i.clone(), i.clone())
-            .execute_success(true)?;
-        helper.check_health().execute_success(true)?;
-    }
-
-    let mut initial_vector = initial_vector.clone();
-    initial_vector.sort();
-    let mut key_values: Vec<(i32, i32)> = to_key_values(&initial_vector);
-
-    helper.get_range_safe(i32::MIN, i32::MAX, &key_values, false)?;
-
-    for function in functions.iter() {
-        println!("function: {:?}", function);
-        match function {
-            Function::Insert(i) => {
-                helper.insert(*i, *i);
-                helper.check_health();
-                key_values.push((*i, *i));
-                key_values.sort();
-            }
-            Function::Delete(i) => {
-                helper.remove(*i);
-                helper.check_health();
-                key_values.retain(|(k, _)| k != i);
-            }
-        }
-        let receipt = helper.execute_success(false)?;
-        if receipt.execution_receipt.is_commit_failure() {
-            return Err(format!("Error: {:?}", receipt.execution_receipt));
-        };
-    }
-    helper.check_health();
-    helper.check_health().execute_success(false)?;
-    helper.get_range_safe(i32::MIN, i32::MAX, &key_values, true)?;
-    helper.check_health().execute_success(false)?;
-    for i in initial_vector.iter() {
-        helper.remove(*i).execute_success(false)?;
-        helper.check_health().execute_success(false)?;
-    }
-    Ok(())
-}
-pub fn test_range(mut vector: Vec<i32>, to_delete: Vec<i32>) {
-    _test_range(vector, to_delete, true);
-}
-
-pub fn write_costs_csv_test_range(mut vector: Vec<i32>) {
+pub fn write_costs_csv_test_range(vector: Vec<i32>) {
     let mut helper = TestHelper::new();
     helper.instantiate_default(false);
     let base_receipt = helper.get(i32::MIN).execute_expect_success(true);
     let base_cost = base_receipt.execution_receipt.fee_summary.total_cost();
 
-    let csv_path = "../../../plot_costs/batched_costs.csv";
+    // let csv_path = "../../../projects/plot_costs/batched_costs.csv";
+    let csv_path = "plot_costs/insert_costs.csv";
+    fs::create_dir("plot_costs").unwrap_or_default();
     let mut wtr = csv::Writer::from_path(csv_path).unwrap();
-    let shift = 25;
+    let tick: Tick = Tick {
+        delta_liquidity: PreciseDecimal::ZERO,
+        total_liquidity: PreciseDecimal::ZERO,
+        price_sqrt: PreciseDecimal::ZERO,
+        x_fee_outside: PreciseDecimal::ZERO,
+        y_fee_outside: PreciseDecimal::ZERO,
+    };
+    let shift = 10;
     for i in 0..shift {
-        helper.insert(vector[i], vector[i]);
+        helper.insert(vector[i], tick.clone());
         helper.execute_expect_success(true);
     }
     let batch_size = 3;
-    let zipped = vector.iter().zip(vector.iter().cycle().take(shift));
-    for (idx, (i, next)) in zipped.enumerate() {
+    let zipped = vector.iter().zip(vector.iter().cycle().skip(shift));
+    // let zipped = zipped.collect::<Vec<(&i32,&i32)>>();
+    // println!("zipped: {:?}", zipped);
+    // panic!();
+
+    for (idx, (&delete, &insert)) in zipped.enumerate() {
         let start = SystemTime::now();
-        helper.remove(*i);
-        helper.insert(*next, *next);
-        helper.insert(i.clone(), i.clone());
+        helper.remove(delete);
+        helper.insert(insert, tick.clone());
+        helper.insert(delete, tick.clone());
         let receipt: Receipt = helper.execute_expect_success(true);
         let cost = receipt.execution_receipt.fee_summary.total_cost();
         let cost = (cost - base_cost) / batch_size;
         let end = SystemTime::now();
         let time = end.duration_since(start).unwrap().as_millis();
         let normalized_time = time / batch_size as u128;
-        println!("time: {:?}", normalized_time);
-        println!("inserting {}:{:?}, ", idx * batch_size, i);
-        println!("cost: {:?}", cost);
+        // println!("time: {:?}", normalized_time);
+        // println!("inserting {}:{:?}, ", idx * batch_size, i);
+        // println!("cost: {:?}", cost);
         wtr.write_record(&[(shift + idx * batch_size).to_string(), cost.to_string()])
             .unwrap();
         wtr.flush();
     }
-}
-pub fn _test_range(mut vector: Vec<i32>, to_delete: Vec<i32>, expensive: bool) {
-    if expensive {
-        println!("vector: {:?}", vector);
-        println!("to_delete: {:?}", to_delete);
-    }
-    let mut helper = TestHelper::new();
-    helper.instantiate_default(false);
-    for (idx, i) in vector.iter().enumerate() {
-        println!("inserting {}:{:?}, ", idx, i);
-        helper.insert(*i, *i);
-        if expensive {
-            helper.check_health();
-            helper.execute_expect_success(true);
-        } else {
-            helper.execute_expect_success(true);
-        }
-    }
-    if !expensive {
-        helper.check_health();
-        helper.execute_expect_success(true);
-    }
-
-    vector.sort();
-    let mut key_values: Vec<(i32, i32)> = to_key_values(&vector);
-
-    helper.get_range_success(i32::MIN, i32::MAX, &key_values, true);
-
-    for (idx, i) in to_delete.iter().rev().enumerate() {
-        println!("deleting {},{:?}", idx, i);
-        helper.remove(*i);
-        if expensive {
-            helper.check_health();
-        }
-        // helper.print();
-        helper.execute_expect_success(true);
-    }
-    if !expensive {
-        helper.check_health();
-        helper.execute_expect_success(true);
-    }
-
-    key_values.retain(|(k, _)| !to_delete.contains(&k));
-
-    helper.get_range_success(i32::MIN, i32::MAX, &key_values, true);
 }

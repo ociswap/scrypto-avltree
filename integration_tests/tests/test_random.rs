@@ -16,15 +16,11 @@ mod avltree_random {
         let mut vector: Vec<i32> = (0..1_000_000).collect();
         let mut rng = rand::thread_rng();
         vector.shuffle(&mut rng);
-        let mut to_delete = vector.clone();
-        to_delete.shuffle(&mut rng);
-        write_costs_csv_test_range(vector, to_delete);
+        write_costs_csv_test_range(vector);
     }
     fn init_logger() {
         let logfile = FileAppender::builder()
-            .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new(
-                "",
-            )))
+            .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("")))
             .build("log/error_case.log")
             .unwrap();
         let config = Config::builder()

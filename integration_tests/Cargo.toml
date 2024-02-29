@@ -19,6 +19,7 @@ csv = "1.3.0"
 log = "0.4.20"
 log4rs = "1.3.0"
 test-log = "0.2.14"
+radix-engine-macros = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
 
 [profile.dev]
 opt-level = 'z'        # Optimize for size.
