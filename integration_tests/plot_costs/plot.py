@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import fire
+from scipy.stats import linregress
 
 
 def load_data(path):
@@ -10,7 +11,6 @@ def load_data(path):
 
 
 def linear_regression(x, y):
-    from scipy.stats import linregress
 
     x_transformed = np.log2(x)
 
