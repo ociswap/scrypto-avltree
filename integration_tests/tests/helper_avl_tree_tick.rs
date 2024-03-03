@@ -80,11 +80,8 @@ impl TestHelper {
     }
     pub fn noop(&mut self) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
-        self.env.manifest_builder = manifest_builder.call_method(
-            self.tree_address.unwrap(),
-            "noop",
-            manifest_args!(),
-        );
+        self.env.manifest_builder =
+            manifest_builder.call_method(self.tree_address.unwrap(), "noop", manifest_args!());
         self.env.new_instruction("noop", 1, 0);
         self
     }
@@ -397,7 +394,12 @@ pub fn write_costs_csv_test_range(vector: Vec<i32>) {
         let time = end.duration_since(start).unwrap().as_millis();
         let normalized_time = time / batch_size as u128;
         println!("time: {:?}", normalized_time);
-        println!("inserting {}:{:?} deleting {}, ", shift + idx , insert, delete);
+        println!(
+            "inserting {}:{:?} deleting {}, ",
+            shift + idx,
+            insert,
+            delete
+        );
         println!("full_cost: {},  cost: {:?}", full_cost, cost);
         wtr.write_record(&[(shift + idx).to_string(), cost.to_string()])
             .unwrap();

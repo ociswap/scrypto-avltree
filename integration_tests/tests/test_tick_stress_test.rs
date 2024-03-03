@@ -1,5 +1,5 @@
-mod helper_avl_tree_tick;
 mod helper_avl_tree;
+mod helper_avl_tree_tick;
 
 #[cfg(test)]
 mod avltree_stress_test_tick {
@@ -15,7 +15,6 @@ mod avltree_stress_test_tick {
         let mut rng = rand::thread_rng();
         vector.shuffle(&mut rng);
         write_costs_csv_test_range(vector);
-        
     }
 }
 #[cfg(test)]
@@ -32,6 +31,5 @@ mod avltree_stress_test_i32 {
         let mut rng = rand::thread_rng();
         vector.shuffle(&mut rng);
         write_costs_csv_test_range(vector);
-        
     }
 }

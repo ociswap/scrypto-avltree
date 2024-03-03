@@ -2,10 +2,10 @@ use lazy_static::lazy_static;
 use radix_engine::blueprints::package::PackageDefinition;
 use scrypto::prelude::*;
 use scrypto_testenv::*;
+use std::fs;
 use std::mem;
 use std::time::SystemTime;
 use transaction::builder::ManifestBuilder;
-use std::fs;
 
 lazy_static! {
     static ref PACKAGE: (Vec<u8>, PackageDefinition) = compile_package(this_package!());
@@ -67,11 +67,8 @@ impl TestHelper {
     }
     pub fn noop(&mut self) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
-        self.env.manifest_builder = manifest_builder.call_method(
-            self.tree_address.unwrap(),
-            "noop",
-            manifest_args!(),
-        );
+        self.env.manifest_builder =
+            manifest_builder.call_method(self.tree_address.unwrap(), "noop", manifest_args!());
         self.env.new_instruction("noop", 1, 0);
         self
     }
@@ -438,12 +435,17 @@ pub fn write_costs_csv_test_range(vector: Vec<i32>) {
         helper.insert(delete.clone(), delete.clone());
         let receipt: Receipt = helper.execute_expect_success(false);
         let full_cost = receipt.execution_receipt.fee_summary.total_cost();
-        let cost = (full_cost - base_cost) / batch_size;
+        let cost: Decimal = (full_cost - base_cost) / batch_size;
         let end = SystemTime::now();
         let time = end.duration_since(start).unwrap().as_millis();
         let normalized_time = time / batch_size as u128;
         println!("time: {:?}", normalized_time);
-        println!("inserting {}:{:?} deleting {}, ", idx * batch_size, insert, delete);
+        println!(
+            "inserting {}:{:?} deleting {}, ",
+            idx + shift,
+            insert,
+            delete
+        );
         println!("full_cost: {},  cost: {:?}", full_cost, cost);
         wtr.write_record(&[(shift + idx).to_string(), cost.to_string()])
             .unwrap();
