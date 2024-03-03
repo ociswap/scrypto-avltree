@@ -70,8 +70,8 @@ def main(dir: str = "data", path: str = "insert_delete_costs.csv"):
     # Update layout
 
     # Show plot
-    fig.write_image(dir_path / "plot.png")
-    fig.write_html(dir_path / "plot.html")
+    fig.write_image(dir_path / f"{path.stem}.png")
+    fig.write_html(dir_path / f"{path.stem}.html")
 
 
 if __name__ == "__main__":
