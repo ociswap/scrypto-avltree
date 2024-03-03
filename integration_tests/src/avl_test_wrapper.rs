@@ -29,6 +29,9 @@ mod avl_test_wrapper {
         pub fn insert(&mut self, key: i32, value: i32) -> Option<i32> {
             self.avl_tree.insert(key, value)
         }
+        pub fn noop(&self) {
+            // Do nothing
+        }
         pub fn batch_insert(&mut self, keys: Vec<i32>, values: Vec<i32>) {
             for i in 0..keys.len() {
                 self.avl_tree.insert(keys[i], values[i]);

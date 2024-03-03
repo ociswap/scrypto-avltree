@@ -364,7 +364,7 @@ pub fn write_costs_csv_test_range(vector: Vec<i32>) {
     let base_cost = base_receipt.execution_receipt.fee_summary.total_cost();
 
     // let csv_path = "../../../projects/plot_costs/batched_costs.csv";
-    let csv_path = "plot_costs/data/insert_delete_costs.csv";
+    let csv_path = "plot_costs/data/insert_delete_costs_tick.csv";
     fs::create_dir("plot_costs/data").unwrap_or_default();
     let mut wtr = csv::Writer::from_path(csv_path).unwrap();
     let tick: Tick = Tick {
@@ -391,13 +391,13 @@ pub fn write_costs_csv_test_range(vector: Vec<i32>) {
         helper.insert(insert, tick.clone());
         helper.insert(delete, tick.clone());
         let receipt: Receipt = helper.execute_expect_success(false);
-        let full_cost = receipt.execution_receipt.fee_summary.total_cost();
-        let cost = (full_cost - base_cost) / batch_size;
+        let full_cost: Decimal = receipt.execution_receipt.fee_summary.total_cost();
+        let cost: Decimal = (full_cost - base_cost) / batch_size;
         let end = SystemTime::now();
         let time = end.duration_since(start).unwrap().as_millis();
         let normalized_time = time / batch_size as u128;
         println!("time: {:?}", normalized_time);
-        println!("inserting {}:{:?} deleting {}, ", idx * batch_size, insert, delete);
+        println!("inserting {}:{:?} deleting {}, ", shift + idx , insert, delete);
         println!("full_cost: {},  cost: {:?}", full_cost, cost);
         wtr.write_record(&[(shift + idx).to_string(), cost.to_string()])
             .unwrap();

@@ -5,6 +5,7 @@ use scrypto_testenv::*;
 use std::mem;
 use std::time::SystemTime;
 use transaction::builder::ManifestBuilder;
+use std::fs;
 
 lazy_static! {
     static ref PACKAGE: (Vec<u8>, PackageDefinition) = compile_package(this_package!());
@@ -63,6 +64,16 @@ impl TestHelper {
         let pool_address: ComponentAddress = receipt.outputs("instantiate")[0];
         self.tree_address = Some(pool_address);
         receipt
+    }
+    pub fn noop(&mut self) -> &mut TestHelper {
+        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        self.env.manifest_builder = manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "noop",
+            manifest_args!(),
+        );
+        self.env.new_instruction("noop", 1, 0);
+        self
     }
     pub fn batch_insert(&mut self, keys: Vec<i32>, values: Vec<i32>) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
@@ -399,41 +410,47 @@ pub fn test_with_functions(
 pub fn test_range(mut vector: Vec<i32>, to_delete: Vec<i32>) {
     _test_range(vector, to_delete, true);
 }
-
-pub fn write_costs_csv_test_range(mut vector: Vec<i32>) {
+pub fn write_costs_csv_test_range(vector: Vec<i32>) {
     let mut helper = TestHelper::new();
     helper.instantiate_default(false);
-    let base_receipt = helper.get(i32::MIN).execute_expect_success(true);
+    let base_receipt = helper.noop().execute_expect_success(false);
     let base_cost = base_receipt.execution_receipt.fee_summary.total_cost();
 
-    let csv_path = "../../../plot_costs/batched_costs.csv";
+    // let csv_path = "../../../projects/plot_costs/batched_costs.csv";
+    let csv_path = "plot_costs/data/insert_delete_costs_i32.csv";
+    fs::create_dir("plot_costs/data").unwrap_or_default();
     let mut wtr = csv::Writer::from_path(csv_path).unwrap();
-    let shift = 25;
+    let shift = 10;
     for i in 0..shift {
         helper.insert(vector[i], vector[i]);
-        helper.execute_expect_success(true);
+        helper.execute_expect_success(false);
     }
     let batch_size = 3;
-    let zipped = vector.iter().zip(vector.iter().cycle().take(shift));
-    for (idx, (i, next)) in zipped.enumerate() {
+    let zipped = vector.iter().zip(vector.iter().cycle().skip(shift));
+    // let zipped = zipped.collect::<Vec<(&i32,&i32)>>();
+    // println!("zipped: {:?}", zipped);
+    // panic!();
+
+    for (idx, (&delete, &insert)) in zipped.enumerate() {
         let start = SystemTime::now();
-        helper.remove(*i);
-        helper.insert(*next, *next);
-        helper.insert(i.clone(), i.clone());
-        let receipt: Receipt = helper.execute_expect_success(true);
-        let cost = receipt.execution_receipt.fee_summary.total_cost();
-        let cost = (cost - base_cost) / batch_size;
+        helper.remove(delete);
+        helper.insert(insert.clone(), insert.clone());
+        helper.insert(delete.clone(), delete.clone());
+        let receipt: Receipt = helper.execute_expect_success(false);
+        let full_cost = receipt.execution_receipt.fee_summary.total_cost();
+        let cost = (full_cost - base_cost) / batch_size;
         let end = SystemTime::now();
         let time = end.duration_since(start).unwrap().as_millis();
         let normalized_time = time / batch_size as u128;
         println!("time: {:?}", normalized_time);
-        println!("inserting {}:{:?}, ", idx * batch_size, i);
-        println!("cost: {:?}", cost);
-        wtr.write_record(&[(shift + idx * batch_size).to_string(), cost.to_string()])
+        println!("inserting {}:{:?} deleting {}, ", idx * batch_size, insert, delete);
+        println!("full_cost: {},  cost: {:?}", full_cost, cost);
+        wtr.write_record(&[(shift + idx).to_string(), cost.to_string()])
             .unwrap();
         wtr.flush();
     }
 }
+
 pub fn _test_range(mut vector: Vec<i32>, to_delete: Vec<i32>, expensive: bool) {
     if expensive {
         println!("vector: {:?}", vector);
