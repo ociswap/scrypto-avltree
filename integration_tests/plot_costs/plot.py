@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import fire
 from scipy.stats import linregress
+from pathlib import Path
 
 
 def load_data(path):
@@ -24,7 +25,9 @@ def linear_regression(x, y):
     return slope, intercept
 
 
-def main(path: str = "insert_delete_costs.csv"):
+def main(dir: str = "data", path: str = "insert_delete_costs.csv"):
+    dir_path = Path(dir)
+    path = dir_path / path
     data = load_data(path)
     np_x = data.iloc[:, 0].values
     np_y = data.iloc[:, 1].values
@@ -67,8 +70,8 @@ def main(path: str = "insert_delete_costs.csv"):
     # Update layout
 
     # Show plot
-    fig.write_image("plot.png")
-    fig.write_html("plot.html")
+    fig.write_image(dir_path / "plot.png")
+    fig.write_html(dir_path / "plot.html")
 
 
 if __name__ == "__main__":

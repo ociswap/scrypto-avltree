@@ -78,16 +78,16 @@ impl TestHelper {
         self.tree_address = Some(pool_address);
         receipt
     }
-    // pub fn batch_insert(&mut self, keys: Vec<i32>, values: Vec<Tick>) -> &mut TestHelper {
-    //     let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
-    //     self.env.manifest_builder = manifest_builder.call_method(
-    //         self.tree_address.unwrap(),
-    //         "batch_insert",
-    //         manifest_args!(keys, values),
-    //     );
-    //     self.env.new_instruction("batch_insert", 1, 0);
-    //     self
-    // }
+    pub fn noop(&mut self) -> &mut TestHelper {
+        let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
+        self.env.manifest_builder = manifest_builder.call_method(
+            self.tree_address.unwrap(),
+            "noop",
+            manifest_args!(),
+        );
+        self.env.new_instruction("noop", 1, 0);
+        self
+    }
 
     pub fn insert(&mut self, key: i32, value: Tick) -> &mut TestHelper {
         let manifest_builder = mem::replace(&mut self.env.manifest_builder, ManifestBuilder::new());
@@ -360,12 +360,12 @@ impl TestHelper {
 pub fn write_costs_csv_test_range(vector: Vec<i32>) {
     let mut helper = TestHelper::new();
     helper.instantiate_default(false);
-    let base_receipt = helper.get(i32::MIN).execute_expect_success(true);
+    let base_receipt = helper.noop().execute_expect_success(false);
     let base_cost = base_receipt.execution_receipt.fee_summary.total_cost();
 
     // let csv_path = "../../../projects/plot_costs/batched_costs.csv";
-    let csv_path = "plot_costs/insert_delete_costs.csv";
-    fs::create_dir("plot_costs").unwrap_or_default();
+    let csv_path = "plot_costs/data/insert_delete_costs.csv";
+    fs::create_dir("plot_costs/data").unwrap_or_default();
     let mut wtr = csv::Writer::from_path(csv_path).unwrap();
     let tick: Tick = Tick {
         delta_liquidity: PreciseDecimal::ZERO,
@@ -377,7 +377,7 @@ pub fn write_costs_csv_test_range(vector: Vec<i32>) {
     let shift = 10;
     for i in 0..shift {
         helper.insert(vector[i], tick.clone());
-        helper.execute_expect_success(true);
+        helper.execute_expect_success(false);
     }
     let batch_size = 3;
     let zipped = vector.iter().zip(vector.iter().cycle().skip(shift));
@@ -390,16 +390,16 @@ pub fn write_costs_csv_test_range(vector: Vec<i32>) {
         helper.remove(delete);
         helper.insert(insert, tick.clone());
         helper.insert(delete, tick.clone());
-        let receipt: Receipt = helper.execute_expect_success(true);
-        let cost = receipt.execution_receipt.fee_summary.total_cost();
-        let cost = (cost - base_cost) / batch_size;
+        let receipt: Receipt = helper.execute_expect_success(false);
+        let full_cost = receipt.execution_receipt.fee_summary.total_cost();
+        let cost = (full_cost - base_cost) / batch_size;
         let end = SystemTime::now();
         let time = end.duration_since(start).unwrap().as_millis();
         let normalized_time = time / batch_size as u128;
-        // println!("time: {:?}", normalized_time);
-        // println!("inserting {}:{:?}, ", idx * batch_size, i);
-        // println!("cost: {:?}", cost);
-        wtr.write_record(&[(shift + idx * batch_size).to_string(), cost.to_string()])
+        println!("time: {:?}", normalized_time);
+        println!("inserting {}:{:?} deleting {}, ", idx * batch_size, insert, delete);
+        println!("full_cost: {},  cost: {:?}", full_cost, cost);
+        wtr.write_record(&[(shift + idx).to_string(), cost.to_string()])
             .unwrap();
         wtr.flush();
     }

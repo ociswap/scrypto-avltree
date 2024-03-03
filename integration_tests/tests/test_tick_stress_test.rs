@@ -4,8 +4,6 @@ mod helper_avl_tree_tick;
 mod avltree_stress_test {
     use super::*;
     use helper_avl_tree_tick::*;
-    use log4rs::append::file::FileAppender;
-    use log4rs::config::{Appender, Config, Root};
     use rand::prelude::*;
     use scrypto::prelude::*;
     // use test_log::test;

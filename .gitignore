@@ -12,3 +12,5 @@ target/
 .idea/
 
 *.lock
+
+integration_tests/plot_costs/data/

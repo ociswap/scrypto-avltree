@@ -47,6 +47,9 @@ mod avl_test_wrapper_tick {
             };
             self.avl_tree.insert(key, value)
         }
+        pub fn noop(&self) {
+            // Do nothing
+        }
 
         pub fn check_health(&mut self) {
             check_health(&mut self.avl_tree);
