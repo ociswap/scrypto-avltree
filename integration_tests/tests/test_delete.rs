@@ -252,7 +252,7 @@ mod avltree_delete {
         println!("remove: {:?}", remove);
         helper.get_range_success(i32::MIN, i32::MAX, should_be_in_tree, true);
     }
-    
+
     #[test]
     fn test_delete_gives_correct_return_value() {
         let mut helper = TestHelper::new();
