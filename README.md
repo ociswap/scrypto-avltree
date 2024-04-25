@@ -94,4 +94,13 @@ None is returned, if the key is not present in the tree.
 
 # Contribute
 The AVL tree itself is implemented in `avl_tree.rs`. The other modules and files contain helpers for testing.
-```rustup target add wasm32-unknown-unknown```
+```
+rustup target add wasm32-unknown-unknown
+```
+
+# Performance
+The performance evaluation of our AVL tree implementation confirms that its efficiency aligns with theoretical expectations, scaling logarithmically in O(log<sub>2</sub>(n)) with respect to the number of elements n. 
+This scaling behavior is illustrated in our test results, where the empirical performance data closely matches the fitted 
+log<sub>2</sub> curve depicted in red. Furthermore, the tests reveal that the operation costs remain minimal even with high amounts of elements. For example, for inserting an element in a tree with 100Mio elements only around 0.24 are needed. With the extrapolation in the plotted line we can calculate that the tree reaches the hard limit of 5 XRD at 10<sup>166</sup> elements. 
+So, the cost for inserting and deleting (similar time needed) elements from the avltree should not lead to breaking of that limit, because so many elements are not feasible to even think about putting into the data structure.
+![](plot.png)

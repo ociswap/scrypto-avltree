@@ -162,7 +162,7 @@ mod avltree_delete {
         helper.execute_expect_success(true);
         vec.remove(0);
         vec.sort();
-        helper.get_range_success(i32::MIN, i32::MAX, to_key_values(&vec), true);
+        helper.get_range_success(i32::MIN, i32::MAX, &to_key_values(&vec), true);
     }
 
     #[test]
@@ -180,7 +180,7 @@ mod avltree_delete {
         helper.remove(1);
         helper.check_health();
         helper.execute_expect_success(true);
-        helper.get_range_success(i32::MIN, i32::MAX, vec![], true);
+        helper.get_range_success(i32::MIN, i32::MAX, &vec![], true);
     }
 
     #[test]
@@ -250,7 +250,7 @@ mod avltree_delete {
         should_be_in_tree.sort();
         println!("insert: {:?}", insert);
         println!("remove: {:?}", remove);
-        helper.get_range_success(i32::MIN, i32::MAX, should_be_in_tree, true);
+        helper.get_range_success(i32::MIN, i32::MAX, &should_be_in_tree, true);
     }
 
     #[test]
