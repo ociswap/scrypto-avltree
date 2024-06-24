@@ -1,18 +1,14 @@
 use std::mem;
 
-use lazy_static::lazy_static;
 use radix_engine::blueprints::package::PackageDefinition;
+use radix_transactions::builder::ManifestBuilder;
 use scrypto::prelude::*;
 use scrypto_testenv::*;
-use transaction::builder::ManifestBuilder;
 
 impl TestHelperExecution for TestHelper {
     fn env(&mut self) -> &mut TestEnvironment {
         &mut self.env
     }
-}
-lazy_static! {
-    static ref PACKAGE: (Vec<u8>, PackageDefinition) = compile_package(this_package!());
 }
 
 pub struct TestHelper {
@@ -22,7 +18,7 @@ pub struct TestHelper {
 
 impl TestHelper {
     pub fn new() -> TestHelper {
-        let env = TestEnvironment::new(vec![("test", &PACKAGE)]);
+        let env = TestEnvironment::new(vec![("test", ".")].into_iter().collect());
 
         TestHelper {
             env,

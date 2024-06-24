@@ -1,0 +1,40 @@
+name: tests
+on: push
+
+jobs:
+  avltree_test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./integration_test
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          default: true
+          profile: minimal
+          target: wasm32-unknown-unknown
+          toolchain: 1.77.2  # should match the rust version of the scrypto-builder
+
+      - name: Setup cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+          cache-all-crates: "true"
+
+      - name: Check Scrypto existence
+        id: scrypto_installed
+        uses: andstor/file-existence-action@v2
+        with:
+          files: /home/runner/.cargo/bin/scrypto
+
+      - name: Install Scrypto simulator
+        run: cargo install --git https://github.com/radixdlt/radixdlt-scrypto --tag v1.1.2 simulator
+        if: steps.scrypto_installed.outputs.files_exists == 'false'
+
+      - run: cargo test  --profile=dev --no-fail-fast
