@@ -7,7 +7,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./integration_test
+        working-directory: integration_tests
 
     steps:
       - name: Checkout repo
