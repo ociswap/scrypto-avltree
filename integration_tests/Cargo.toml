@@ -4,16 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
+sbor = "1.2.0"
+scrypto = "1.2.0"
+
 scrypto_avltree = { path = ".." }
 
 [dev-dependencies]
-transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
-radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
-# scrypto_testenv = { git = "https://github.com/ociswap/scrypto-testenv", tag = "v0.6.1" }
-scrypto_testenv = { path = "../../scrypto-testenv" }
-lazy_static = "1.4.0"
+# radix-transaction-scenarios = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.2.0" }
+radix-transactions = "1.2.0"
+radix-engine = "1.2.0"
+scrypto_testenv = { git = "https://github.com/ociswap/scrypto-testenv", tag = "v0.7.0" }
+# scrypto_testenv = { path = "../../scrypto-testenv" }
 
 [profile.dev]
 opt-level = 'z'        # Optimize for size.
