@@ -6,11 +6,9 @@ edition = "2021"
 [dependencies]
 sbor = "1.2.0"
 scrypto = "1.2.0"
-
 scrypto_avltree = { path = ".." }
 
 [dev-dependencies]
-# radix-transaction-scenarios = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.2.0" }
 radix-transactions = "1.2.0"
 radix-engine = "1.2.0"
 scrypto_testenv = { git = "https://github.com/ociswap/scrypto-testenv", tag = "v0.7.0" }

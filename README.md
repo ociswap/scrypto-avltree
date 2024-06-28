@@ -19,7 +19,7 @@ Checkout the example folder, that provides some basic usage examples.
 Add avl tree to your toml config:
 ```toml
 [dependencies]
-scrypto_avltree = { git = "https://github.com/ociswap/scrypto-avltree", tag = "v1.1.2" }
+scrypto_avltree = { git = "https://github.com/ociswap/scrypto-avltree", tag = "v1.2.0" }
 ```
 
 ### Instantiation 
