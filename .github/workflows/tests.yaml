@@ -27,14 +27,4 @@ jobs:
           cache-on-failure: "true"
           cache-all-crates: "true"
 
-      - name: Check Scrypto existence
-        id: scrypto_installed
-        uses: andstor/file-existence-action@v2
-        with:
-          files: /home/runner/.cargo/bin/scrypto
-
-      - name: Install Scrypto simulator
-        run: cargo install --git https://github.com/radixdlt/radixdlt-scrypto --tag v1.1.2 simulator
-        if: steps.scrypto_installed.outputs.files_exists == 'false'
-
-      - run: cargo test  --profile=dev --no-fail-fast
+      - run: cargo test --profile=dev --no-fail-fast
