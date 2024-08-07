@@ -23,6 +23,14 @@ pub struct AvlTree<K: ScryptoSbor + Eq + Ord + Hash, V: ScryptoSbor> {
     store_cache: HashMap<K, Node<K, ()>>,
 }
 
+impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor + Clone> Default
+    for AvlTree<K, V>
+{
+    fn default() -> Self {
+        AvlTree::new()
+    }
+}
+
 impl<K: ScryptoSbor + Clone + Display + Eq + Ord + Hash + Debug, V: ScryptoSbor + Clone>
     AvlTree<K, V>
 {
