@@ -18,7 +18,7 @@ mod avl_test_wrapper {
 
     impl AvlTestWrapper {
         pub fn instantiate() -> Global<AvlTestWrapper> {
-            let avl_tree = AvlTree::new();
+            let avl_tree = AvlTree::default();
             let component = (Self { avl_tree })
                 .instantiate()
                 .prepare_to_globalize(OwnerRole::None)
