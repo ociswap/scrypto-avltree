@@ -1,6 +1,5 @@
 use std::mem;
 
-use radix_engine::blueprints::package::PackageDefinition;
 use radix_transactions::builder::ManifestBuilder;
 use scrypto::prelude::*;
 use scrypto_testenv::*;

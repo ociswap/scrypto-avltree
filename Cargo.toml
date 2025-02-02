@@ -1,14 +1,14 @@
 [package]
 name = "scrypto_avltree"
-version = "1.2.0"
+version = "1.3.0"
 edition = "2021"
 license = "MIT"
 description = "AvlTree implementation in Scrypto with KVStore"
 repository = "https://github.com/ociswap/scrypto-avltree"
 
 [dependencies]
-sbor = "1.2.0"
-scrypto = "1.2.0"
+sbor = "1.3.0"
+scrypto = "1.3.0"
 
 [workspace]
 # Set the package crate as its own empty workspace, to hide it from any potential ancestor workspace

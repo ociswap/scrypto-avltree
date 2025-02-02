@@ -51,7 +51,7 @@ mod hello_tree {
                 .range(dec!(1)..dec!(5))
                 .map(|(key, _v, next_key)| next_key.map(|next_key| key + next_key))
                 .for_each(|(new_value)| {
-                    info!("{} ", new_value);
+                    info!("{:?} ", new_value);
                 });
             /* more fancy operations */
         }
